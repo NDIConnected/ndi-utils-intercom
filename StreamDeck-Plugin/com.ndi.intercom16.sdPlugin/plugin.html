@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NDI Intercom Plugin</title>
+</head>
+<body>
+<script src="signalr.min.js"></script>
+<script>
+// Global WebSocket connection to Stream Deck
+var websocket = null;
+var pluginUUID = null;
+
+// API Configuration
+var API_BASE = 'http://localhost:5016/api/intercom';
+var SIGNALR_HUB_URL = 'http://localhost:5016/intercomHub';
+var currentServerBaseUrl = 'http://localhost:5016'; // Track current server for SignalR
+
+// Action UUIDs
+var ACTION_TALK = 'com.ndi.intercom16.talk';
+var ACTION_LISTEN = 'com.ndi.intercom16.listen';
+var ACTION_ROTATE_GROUP = 'com.ndi.intercom16.rotategroup';
+var ACTION_RESET = 'com.ndi.intercom16.reset';
+
+// Store contexts and settings
+var contextSettings = {};
+
+// Store polling state for each context (using flags instead of timers)
+var pollingActive = {};
+
+// SignalR connection
+var signalRConnection = null;
+
+/**
+ * Connect to Stream Deck WebSocket
+ */
+function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
+    pluginUUID = inPluginUUID;
+
+    console.log('[NDI Intercom] Connecting to Stream Deck...');
+
+    websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+
+    websocket.onopen = function() {
+        console.log('[NDI Intercom] WebSocket connected');
+
+        // Register plugin
+        var json = {
+            event: inRegisterEvent,
+            uuid: inPluginUUID
+        };
+        websocket.send(JSON.stringify(json));
+    };
+
+    websocket.onerror = function(error) {
+        console.error('[NDI Intercom] WebSocket error:', error);
+    };
+
+    websocket.onclose = function() {
+        console.log('[NDI Intercom] WebSocket closed');
+    };
+
+    websocket.onmessage = function(evt) {
+        try {
+            var jsonObj = JSON.parse(evt.data);
+            handleStreamDeckEvent(jsonObj);
+        } catch (error) {
+            console.error('[NDI Intercom] Error parsing message:', error);
+        }
+    };
+
+    // Initialize SignalR connection after Stream Deck connection is established
+    initSignalR();
+}
+
+/**
+ * Initialize SignalR connection to NDI Intercom Hub
+ */
+function initSignalR(serverBaseUrl) {
+    // If no URL provided, use current server
+    if (!serverBaseUrl) {
+        serverBaseUrl = currentServerBaseUrl;
+    }
+
+    var hubUrl = serverBaseUrl + '/intercomHub';
+
+    // Check if we're already connected to this server
+    if (signalRConnection && currentServerBaseUrl === serverBaseUrl) {
+        console.log('[NDI Intercom] SignalR already connected to:', hubUrl);
+        return;
+    }
+
+    // Disconnect existing connection if switching servers
+    if (signalRConnection) {
+        console.log('[NDI Intercom] Disconnecting from old server:', currentServerBaseUrl);
+        signalRConnection.stop();
+        signalRConnection = null;
+    }
+
+    currentServerBaseUrl = serverBaseUrl;
+    console.log('[NDI Intercom] Initializing SignalR connection to:', hubUrl);
+
+    try {
+        // Create SignalR connection
+        signalRConnection = new signalR.HubConnectionBuilder()
+            .withUrl(hubUrl)
+            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // Retry intervals
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // Handle ChannelUpdated events
+        signalRConnection.on('ChannelUpdated', function(channelData) {
+            console.log('[NDI Intercom] SignalR: Channel updated:', channelData.channelNumber);
+
+            // Update all buttons that display this channel
+            for (var context in contextSettings) {
+                var ctxData = contextSettings[context];
+                var contextChannel = parseInt(ctxData.settings.channel);
+
+                if (contextChannel === channelData.channelNumber) {
+                    console.log('[NDI Intercom] SignalR: Updating button for context:', context);
+                    updateButtonFromChannelData(context, channelData);
+                }
+            }
+        });
+
+        // Handle connection events
+        signalRConnection.onreconnecting(function(error) {
+            console.warn('[NDI Intercom] SignalR: Reconnecting...', error);
+        });
+
+        signalRConnection.onreconnected(function(connectionId) {
+            console.log('[NDI Intercom] SignalR: Reconnected with ID:', connectionId);
+        });
+
+        signalRConnection.onclose(function(error) {
+            console.error('[NDI Intercom] SignalR: Connection closed', error);
+            // Automatically retry connection
+            setTimeout(function() {
+                startSignalR();
+            }, 5000);
+        });
+
+        // Start the connection
+        startSignalR();
+
+    } catch (error) {
+        console.error('[NDI Intercom] Error initializing SignalR:', error);
+    }
+}
+
+/**
+ * Start SignalR connection
+ */
+function startSignalR() {
+    if (signalRConnection && signalRConnection.state === signalR.HubConnectionState.Disconnected) {
+        signalRConnection.start()
+            .then(function() {
+                console.log('[NDI Intercom] SignalR: Connected successfully');
+            })
+            .catch(function(error) {
+                console.error('[NDI Intercom] SignalR: Connection failed:', error);
+                // Retry after 5 seconds
+                setTimeout(function() {
+                    startSignalR();
+                }, 5000);
+            });
+    }
+}
+
+/**
+ * Handle Stream Deck events
+ */
+function handleStreamDeckEvent(jsonObj) {
+    var event = jsonObj.event;
+    var action = jsonObj.action;
+    var context = jsonObj.context;
+    var settings = {};
+
+    if (jsonObj.payload && jsonObj.payload.settings) {
+        settings = jsonObj.payload.settings;
+    }
+
+    console.log('[NDI Intercom] Event: ' + event + ', Action: ' + action);
+
+    if (event === 'keyDown') {
+        handleKeyDown(context, settings, action);
+    } else if (event === 'willAppear') {
+        // Store settings when button appears
+        if (context) {
+            contextSettings[context] = { action: action, settings: settings };
+        }
+        handleWillAppear(context, settings, action);
+    } else if (event === 'willDisappear') {
+        // Stop polling for this context
+        pollingActive[context] = false;
+        delete contextSettings[context];
+    } else if (event === 'didReceiveSettings') {
+        // Update settings when they change
+        contextSettings[context] = { action: action, settings: settings };
+
+        // Reconnect SignalR if server URL changed
+        var serverUrl = (settings.serverUrl || API_BASE).trim();
+        var serverBaseUrl = extractBaseUrl(serverUrl);
+        initSignalR(serverBaseUrl);
+
+        var channel = parseInt(settings.channel) || 1;
+
+        // Update from server for dynamic labels
+        if (action === ACTION_TALK || action === ACTION_LISTEN || action === ACTION_ROTATE_GROUP) {
+            updateButtonState(context, channel, serverUrl);
+        } else {
+            updateButtonTitle(context, settings, action);
+        }
+    }
+}
+
+/**
+ * Make HTTP request using XMLHttpRequest
+ */
+function makeRequest(method, url, body, onSuccess, onError) {
+    console.log('[NDI Intercom] Making request:', method, url);
+    var xhr = new XMLHttpRequest();
+
+    xhr.onreadystatechange = function() {
+        // Only log the final state (4) to reduce spam
+        if (xhr.readyState === 4) {
+            console.log('[NDI Intercom] XHR completed - status:', xhr.status);
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    // Success - no need to log every successful poll
+                    var data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+                    if (onSuccess) onSuccess(data);
+                } catch (e) {
+                    console.error('[NDI Intercom] Error parsing response:', e);
+                    if (onError) onError(e);
+                }
+            } else if (xhr.status === 0) {
+                console.error('[NDI Intercom] Network error - status 0. Possible causes:');
+                console.error('  - Server not reachable at:', url);
+                console.error('  - CORS policy blocking request');
+                console.error('  - Server not running');
+                if (onError) onError(new Error('Network error - cannot reach server at ' + url));
+            } else {
+                console.error('[NDI Intercom] API error: ' + xhr.status + ' ' + xhr.statusText);
+                if (onError) onError(new Error('HTTP ' + xhr.status + ': ' + xhr.statusText));
+            }
+        }
+    };
+
+    xhr.onerror = function(e) {
+        console.error('[NDI Intercom] XHR onerror triggered for URL:', url);
+        console.error('[NDI Intercom] Error event:', e);
+        if (onError) onError(new Error('Network error connecting to ' + url));
+    };
+
+    xhr.ontimeout = function() {
+        console.error('[NDI Intercom] Request timeout for URL:', url);
+        if (onError) onError(new Error('Request timeout'));
+    };
+
+    try {
+        xhr.open(method, url, true);
+        xhr.timeout = 10000; // 10 second timeout
+        if (body) {
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify(body));
+        } else {
+            xhr.send();
+        }
+    } catch (e) {
+        console.error('[NDI Intercom] Exception making request:', e);
+        if (onError) onError(e);
+    }
+}
+
+/**
+ * Handle button press
+ */
+function handleKeyDown(context, settings, action) {
+    var channel = parseInt(settings.channel) || 1;
+    var serverUrl = (settings.serverUrl || API_BASE).trim();
+
+    console.log('[NDI Intercom] Key pressed: ' + action + ', Channel: ' + channel + ', Server: ' + serverUrl);
+
+    if (action === ACTION_TALK) {
+        makeRequest('POST', serverUrl + '/channels/' + channel + '/talk/toggle', null,
+            function() {
+                console.log('[NDI Intercom] TALK toggled for channel ' + channel);
+                updateButtonState(context, channel, serverUrl);
+            },
+            function(error) {
+                console.error('[NDI Intercom] Error toggling TALK:', error);
+                showAlert(context);
+            }
+        );
+    } else if (action === ACTION_LISTEN) {
+        makeRequest('POST', serverUrl + '/channels/' + channel + '/listen/toggle', null,
+            function() {
+                console.log('[NDI Intercom] LISTEN toggled for channel ' + channel);
+                updateButtonState(context, channel, serverUrl);
+            },
+            function(error) {
+                console.error('[NDI Intercom] Error toggling LISTEN:', error);
+                showAlert(context);
+            }
+        );
+    } else if (action === ACTION_ROTATE_GROUP) {
+        makeRequest('POST', serverUrl + '/channels/' + channel + '/group/rotate', null,
+            function(data) {
+                console.log('[NDI Intercom] Group rotated to ' + data.group + ' for channel ' + channel);
+                updateButtonState(context, channel, serverUrl);
+            },
+            function(error) {
+                console.error('[NDI Intercom] Error rotating group:', error);
+                showAlert(context);
+            }
+        );
+    } else if (action === ACTION_RESET) {
+        makeRequest('POST', serverUrl + '/reset', null,
+            function() {
+                console.log('[NDI Intercom] All channels reset');
+                showOk(context);
+                // Update all buttons
+                for (var ctx in contextSettings) {
+                    var ctxData = contextSettings[ctx];
+                    if (ctxData.settings.channel) {
+                        updateButtonState(ctx, ctxData.settings.channel, serverUrl);
+                    }
+                }
+            },
+            function(error) {
+                console.error('[NDI Intercom] Error resetting channels:', error);
+                showAlert(context);
+            }
+        );
+    }
+}
+
+/**
+ * Handle button appearance
+ */
+function handleWillAppear(context, settings, action) {
+    var channel = parseInt(settings.channel) || 1;
+    var serverUrl = (settings.serverUrl || API_BASE).trim();
+
+    console.log('[NDI Intercom] willAppear - context:', context, 'channel:', channel, 'action:', action, 'server:', serverUrl);
+
+    // Extract server base URL for SignalR (e.g., "http://192.168.1.100:5016" from "http://192.168.1.100:5016/api/intercom")
+    var serverBaseUrl = extractBaseUrl(serverUrl);
+
+    // Initialize or reconnect SignalR to this server
+    initSignalR(serverBaseUrl);
+
+    // Update state and title from server (dynamic labels)
+    if (action === ACTION_TALK || action === ACTION_LISTEN || action === ACTION_ROTATE_GROUP) {
+        updateButtonState(context, channel, serverUrl);
+        // Start polling for this specific context
+        startPolling(context, channel, serverUrl, action);
+    } else {
+        // Only for other actions (RESET) use static title
+        updateButtonTitle(context, settings, action);
+    }
+}
+
+/**
+ * Extract base URL from full API URL
+ * Example: "http://192.168.1.100:5016/api/intercom" -> "http://192.168.1.100:5016"
+ */
+function extractBaseUrl(fullUrl) {
+    try {
+        var url = new URL(fullUrl);
+        return url.protocol + '//' + url.host;
+    } catch (e) {
+        console.error('[NDI Intercom] Error parsing URL:', fullUrl, e);
+        return 'http://localhost:5016';
+    }
+}
+
+/**
+ * Start polling for a specific context using recursive setTimeout
+ */
+function startPolling(context, channel, serverUrl, action) {
+    console.log('[NDI Intercom] Starting polling for context:', context, 'server:', serverUrl);
+
+    // Mark this context as active
+    pollingActive[context] = true;
+
+    // Start the polling loop (context only, settings will be read dynamically)
+    pollLoop(context);
+}
+
+/**
+ * Recursive polling loop using setTimeout
+ */
+function pollLoop(context) {
+    // Check if polling should continue
+    if (!pollingActive[context]) {
+        console.log('[NDI Intercom] Stopping polling for context:', context);
+        return;
+    }
+
+    // Get current settings for this context (may have changed)
+    var ctxData = contextSettings[context];
+    if (ctxData) {
+        var channel = parseInt(ctxData.settings.channel) || 1;
+        var serverUrl = (ctxData.settings.serverUrl || API_BASE).trim();
+
+        // Update button state with current settings
+        updateButtonState(context, channel, serverUrl);
+    }
+
+    // Schedule next poll - 5000ms (5 seconds) as fallback since SignalR provides real-time updates
+    setTimeout(function() {
+        pollLoop(context);
+    }, 5000);
+}
+
+/**
+ * Update button state from server
+ */
+function updateButtonState(context, channel, serverUrl) {
+    // Removed verbose log to reduce spam during polling
+    makeRequest('GET', serverUrl + '/channels/' + channel, null,
+        function(channelData) {
+            updateButtonFromChannelData(context, channelData);
+        },
+        function(error) {
+            console.error('[NDI Intercom] Error updating button state:', error);
+        }
+    );
+}
+
+/**
+ * Update button UI from channel data (used by both REST API and SignalR)
+ */
+function updateButtonFromChannelData(context, channelData) {
+    var ctxData = contextSettings[context];
+    if (!ctxData) return;
+
+    var action = ctxData.action;
+    var channel = channelData.channelNumber;
+    var label = channelData.label || ('Ch ' + channel);
+    var title = '';
+    var bgColor = null;
+
+    if (action === ACTION_TALK) {
+        title = label + '\nTALK';
+        // Dark red when ON, very dark gray when OFF
+        bgColor = channelData.talkEnabled ? '#8b1e1e' : '#1a1a1a';
+    } else if (action === ACTION_LISTEN) {
+        title = label + '\nLISTEN';
+        // Dark blue when ON, very dark gray when OFF
+        bgColor = channelData.listenEnabled ? '#1a5490' : '#1a1a1a';
+    } else if (action === ACTION_ROTATE_GROUP) {
+        var groupNames = ['NONE', 'GRP 1', 'GRP 2', 'GRP 3', 'GRP 4'];
+        title = label + '\n' + groupNames[channelData.intercomGroup];
+    }
+
+    if (title) {
+        setTitle(context, title);
+    }
+
+    if (bgColor) {
+        setImage(context, bgColor);
+    }
+}
+
+/**
+ * Update button title based on settings
+ */
+function updateButtonTitle(context, settings, action) {
+    var channel = parseInt(settings.channel) || 1;
+    var title = '';
+
+    if (action === ACTION_TALK) {
+        title = 'TALK\n' + channel;
+    } else if (action === ACTION_LISTEN) {
+        title = 'LISTEN\n' + channel;
+    } else if (action === ACTION_ROTATE_GROUP) {
+        title = 'ROTATE\nGRP\nCH ' + channel;
+    } else if (action === ACTION_RESET) {
+        title = 'RESET\nALL';
+    }
+
+    if (title) {
+        setTitle(context, title);
+    }
+}
+
+/**
+ * Set button title
+ */
+function setTitle(context, title) {
+    if (websocket && websocket.readyState === 1) {
+        var json = {
+            event: 'setTitle',
+            context: context,
+            payload: {
+                title: title,
+                target: 0
+            }
+        };
+        websocket.send(JSON.stringify(json));
+    }
+}
+
+/**
+ * Generate colored background image
+ */
+function generateColoredImage(color, callback) {
+    var canvas = document.createElement('canvas');
+    canvas.width = 144;
+    canvas.height = 144;
+    var ctx = canvas.getContext('2d');
+
+    // Fill with solid color
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 144, 144);
+
+    // Convert to base64 data URL
+    var dataUrl = canvas.toDataURL('image/png');
+    if (callback) {
+        callback(dataUrl);
+    }
+    return dataUrl;
+}
+
+/**
+ * Set button image with colored background
+ */
+function setImage(context, color) {
+    generateColoredImage(color, function(imageData) {
+        if (websocket && websocket.readyState === 1) {
+            var json = {
+                event: 'setImage',
+                context: context,
+                payload: {
+                    image: imageData,
+                    target: 0
+                }
+            };
+            websocket.send(JSON.stringify(json));
+        }
+    });
+}
+
+/**
+ * Show OK checkmark
+ */
+function showOk(context) {
+    if (websocket && websocket.readyState === 1) {
+        var json = {
+            event: 'showOk',
+            context: context
+        };
+        websocket.send(JSON.stringify(json));
+    }
+}
+
+/**
+ * Show alert
+ */
+function showAlert(context) {
+    if (websocket && websocket.readyState === 1) {
+        var json = {
+            event: 'showAlert',
+            context: context
+        };
+        websocket.send(JSON.stringify(json));
+    }
+}
+
+console.log('[NDI Intercom] Plugin loaded');
+</script>
+</body>
+</html>

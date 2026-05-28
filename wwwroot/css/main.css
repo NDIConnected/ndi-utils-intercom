@@ -1,0 +1,580 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #303030 0%, #0c0c0c 100%);
+    color: #ffffff;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(90deg, #000000 0%, #181818 100%);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo {
+    height: 64px;
+    width: auto;
+}
+
+.title {
+    font-size: 30px;
+    font-weight: 500;
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+/* VU Meter */
+.vu-meter-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+
+}
+
+.vu-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.vu-meter {
+    width: 300px;
+    height: 20px;
+    background: #313131;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.vu-meter-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+    transition: width 0.1s ease-out;
+}
+
+.header-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.save-btn, .load-btn, .settings-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 22px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.save-btn:hover, .load-btn:hover, .settings-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+    margin: 10% auto;
+    padding: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h2 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.modal-content p {
+    color: #ccc;
+    margin-bottom: 15px;
+}
+
+.modal-content input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+}
+
+.modal-content input[type="text"]:focus {
+    outline: none;
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close:hover {
+    color: #fff;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.modal-btn-save, .modal-btn-cancel {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.modal-btn-save {
+    background: rgba(76, 175, 80, 0.8);
+    color: white;
+}
+
+.modal-btn-save:hover {
+    background: rgba(76, 175, 80, 1);
+    transform: translateY(-2px);
+}
+
+.modal-btn-cancel {
+    background: rgba(244, 67, 54, 0.8);
+    color: white;
+}
+
+.modal-btn-cancel:hover {
+    background: rgba(244, 67, 54, 1);
+    transform: translateY(-2px);
+}
+
+.presets-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.preset-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.preset-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.preset-name {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.preset-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.preset-load-btn, .preset-delete-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.preset-load-btn {
+    background: rgba(33, 150, 243, 0.8);
+    color: white;
+}
+
+.preset-load-btn:hover {
+    background: rgba(33, 150, 243, 1);
+}
+
+.preset-delete-btn {
+    background: rgba(244, 67, 54, 0.6);
+    color: white;
+}
+
+.preset-delete-btn:hover {
+    background: rgba(244, 67, 54, 1);
+}
+
+/* Channels Grid */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1600px) {
+    .channels-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        padding: 24px;
+    }
+}
+
+@media (max-width: 1400px) {
+    .channels-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1000px) {
+    .channels-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .channels-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Media query per altezza ridotta - 8 canali in riga orizzontale */
+@media (max-height: 800px) {
+    .channels-grid {
+        grid-template-columns: repeat(8, 1fr);
+        max-width: 100%;
+        gap: 12px;
+        padding: 16px;
+    }
+}
+
+/* Pochi canali (es. NDI Intercom2): centra i box in orizzontale */
+.channels-grid.channels-grid--few {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 20px;
+    width: 100%;
+    max-width: none;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+.channels-grid.channels-grid--few .channel-card {
+    flex: 0 0 auto;
+    width: min(100%, 380px);
+    max-width: 380px;
+}
+
+@media (max-height: 800px) {
+    .channels-grid.channels-grid--few {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* Channel Card */
+.channel-card {
+    background: rgba(54, 54, 54, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.channel-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 24px rgba(173, 173, 173, 0.3);
+}
+
+.channel-header {
+    font-size: 27px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #3498db;
+    cursor: pointer;
+    text-align: center;
+}
+
+.channel-header:hover {
+    color: #5dade2;
+}
+
+/* Buttons */
+.btn-talk, .btn-listen {
+    width: 100%;
+    height: 60px;
+    border: none;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+}
+
+.btn-talk {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-talk.active {
+    background: #e74c3c;
+    color: white;
+    box-shadow: 0 4px 16px rgba(231, 76, 60, 0.5);
+}
+
+.btn-talk:hover:not(.active) {
+    background: rgba(231, 76, 60, 0.3);
+    color: white;
+}
+
+.btn-listen {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-listen.active {
+    background: #3498db;
+    color: white;
+    box-shadow: 0 4px 16px rgba(52, 152, 219, 0.5);
+}
+
+.btn-listen:hover:not(.active) {
+    background: rgba(52, 152, 219, 0.3);
+    color: white;
+}
+
+/* Level Controls */
+.level-controls {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    gap: 12px;
+}
+
+.level-control {
+    text-align: center;
+    flex: 1;
+}
+
+.level-label {
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* NDI VU Meter vertical (same height as knob) */
+.level-with-vu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.ndi-vu-meter-vertical {
+    width: 8px;
+    height: 90px;
+    background: #1a1a2e;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.ndi-vu-meter-fill-vertical {
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(180deg, #ff0000 0%, #ffff00 50%, #00ff00 100%);
+    transition: height 0.05s ease-out;
+}
+
+.level-knob {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #2c3e50 0%, #1a1a2e 100%);
+    border: 3px solid;
+    position: relative;
+    margin: 0 auto;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.level-knob.input {
+    border-color: #3498db;
+}
+
+.level-knob.output {
+    border-color: #f39c12;
+}
+
+.level-knob::before {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 35px;
+    background: white;
+    top: 5px;
+    left: 50%;
+    transform-origin: center 40px;
+    transform: translateX(-50%) rotate(0deg);
+    border-radius: 2px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.level-value {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.level-value.input {
+    color: #3498db;
+}
+
+.level-value.output {
+    color: #f39c12;
+}
+
+/* Intercom Groups */
+.intercom-groups {
+    margin-top: 16px;
+}
+
+.groups-label {
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.groups-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.group-btn {
+    flex: 1;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+.group-btn.active {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+}
+
+.group-btn:hover:not(.active) {
+    background: rgba(52, 152, 219, 0.2);
+    color: white;
+    border-color: #3498db;
+}
+
+.group-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Loading */
+.loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    text-align: center;
+}
+
+.loading::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 50px;
+    margin: 20px auto;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

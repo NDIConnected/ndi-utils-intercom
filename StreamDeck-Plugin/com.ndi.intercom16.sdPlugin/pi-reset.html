@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Reset All Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+        }
+        .sdpi-wrapper {
+            padding: 10px;
+        }
+        .sdpi-item {
+            margin-bottom: 15px;
+        }
+        .sdpi-item-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #9d9d9d;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            font-size: 12px;
+            border: 1px solid #3d3d3d;
+            background: #2d2d2d;
+            color: #d0d0d0;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0070f3;
+        }
+        .info-text {
+            font-size: 11px;
+            color: #7d7d7d;
+            margin-top: 5px;
+        }
+        .warning-text {
+            font-size: 11px;
+            color: #ff9966;
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 153, 102, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid #ff9966;
+        }
+    </style>
+</head>
+<body>
+    <div class="sdpi-wrapper">
+        <div class="sdpi-item">
+            <label class="sdpi-item-label">Server URL (optional):</label>
+            <input type="text" id="serverUrl" placeholder="http://192.168.1.100:5016/api/intercom">
+            <div class="info-text">Leave empty for localhost:5016. For remote: http://IP:5016/api/intercom</div>
+        </div>
+
+        <div class="warning-text">
+            ⚠️ This action will reset all 16 channels (disable TALK/LISTEN on all channels).
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let uuid = null;
+        let actionInfo = {};
+
+        function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo) {
+            uuid = inPropertyInspectorUUID;
+
+            if (inActionInfo) {
+                try {
+                    actionInfo = JSON.parse(inActionInfo);
+                } catch (e) {
+                    console.error('Error parsing actionInfo:', e);
+                }
+            }
+
+            websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+
+            websocket.onopen = function() {
+                const json = {
+                    event: inRegisterEvent,
+                    uuid: inPropertyInspectorUUID
+                };
+                websocket.send(JSON.stringify(json));
+
+                // Request current settings
+                websocket.send(JSON.stringify({
+                    event: 'getSettings',
+                    context: uuid
+                }));
+            };
+
+            websocket.onmessage = function(evt) {
+                const jsonObj = JSON.parse(evt.data);
+
+                if (jsonObj.event === 'didReceiveSettings') {
+                    const settings = jsonObj.payload.settings;
+                    document.getElementById('serverUrl').value = settings.serverUrl || '';
+                }
+            };
+
+            // Save settings when changed
+            document.getElementById('serverUrl').addEventListener('change', saveSettings);
+            document.getElementById('serverUrl').addEventListener('blur', saveSettings); // Save on blur too
+
+            // Save with debounce when typing
+            let saveTimeout;
+            document.getElementById('serverUrl').addEventListener('input', function() {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(saveSettings, 500);
+            });
+        }
+
+        function saveSettings() {
+            const serverUrlInput = document.getElementById('serverUrl');
+            let serverUrl = serverUrlInput.value.trim();
+
+            // Validate URL if provided
+            if (serverUrl && !serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+                console.warn('[NDI Intercom] Invalid URL format. Must start with http:// or https://');
+                serverUrlInput.style.borderColor = '#ff6b6b';
+                setTimeout(() => { serverUrlInput.style.borderColor = '#3d3d3d'; }, 2000);
+                return;
+            }
+
+            const settings = {
+                serverUrl: serverUrl || undefined
+            };
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const json = {
+                    event: 'setSettings',
+                    context: uuid,
+                    payload: settings
+                };
+                websocket.send(JSON.stringify(json));
+                console.log('[NDI Intercom] Settings saved:', settings);
+            }
+        }
+    </script>
+</body>
+</html>

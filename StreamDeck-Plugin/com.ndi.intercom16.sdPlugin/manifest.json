@@ -1,0 +1,93 @@
+{
+  "SDKVersion": 2,
+  "Author": "NDI",
+  "CodePath": "plugin.html",
+  "Name": "NDI Intercom16",
+  "Description": "Control NDI Intercom16 channels (16ch) - TALK, LISTEN, and Group assignments",
+  "Category": "NDI Intercom16",
+  "CategoryIcon": "images/category",
+  "Icon": "images/plugin",
+  "URL": "http://localhost:5016",
+  "Version": "1.2.1",
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "Actions": [
+    {
+      "Icon": "images/action",
+      "Name": "TALK",
+      "States": [
+        {
+          "Image": "images/key",
+          "TitleAlignment": "middle",
+          "FontSize": "10"
+        },
+        {
+          "Image": "images/key-active",
+          "TitleAlignment": "middle",
+          "FontSize": "10"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Toggle TALK for selected channel",
+      "UUID": "com.ndi.intercom16.talk",
+      "PropertyInspectorPath": "pi-talk.html"
+    },
+    {
+      "Icon": "images/action",
+      "Name": "LISTEN",
+      "States": [
+        {
+          "Image": "images/key",
+          "TitleAlignment": "middle",
+          "FontSize": "10"
+        },
+        {
+          "Image": "images/key-active",
+          "TitleAlignment": "middle",
+          "FontSize": "10"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Toggle LISTEN for selected channel",
+      "UUID": "com.ndi.intercom16.listen",
+      "PropertyInspectorPath": "pi-listen.html"
+    },
+    {
+      "Icon": "images/action",
+      "Name": "Rotate Group",
+      "States": [
+        {
+          "Image": "images/key",
+          "TitleAlignment": "middle",
+          "FontSize": "16"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Rotate group 0->1->2->3->4->0 for selected channel",
+      "UUID": "com.ndi.intercom16.rotategroup",
+      "PropertyInspectorPath": "pi-group.html"
+    },
+    {
+      "Icon": "images/action",
+      "Name": "Reset All",
+      "States": [
+        {
+          "Image": "images/key",
+          "TitleAlignment": "middle",
+          "FontSize": "16"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Reset all channels (TALK/LISTEN OFF)",
+      "UUID": "com.ndi.intercom16.reset",
+      "PropertyInspectorPath": "pi-reset.html"
+    }
+  ]
+}

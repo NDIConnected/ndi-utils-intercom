@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>NDI Intercom2</AssemblyName>
+    <RootNamespace>NDIIntercom</RootNamespace>
+    <Version>1.7.3</Version>
+    <AssemblyVersion>1.7.3.0</AssemblyVersion>
+    <FileVersion>1.7.3.0</FileVersion>
+    <InformationalVersion>1.7.3</InformationalVersion>
+    <Authors>NDI</Authors>
+    <Product>NDI Intercom2</Product>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('windows')) AND Exists('COM_icon_windows.ico')">COM_icon_windows.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS1998;CS8618;CS8625;CS8600;CS8604;CS8603;CS8622;CS8612;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows'))">
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Program.cs" />
+    <!-- Linux: 2ch entry is Program.Linux.Light.cs; Windows: Program.Light.cs -->
+    <Compile Remove="Program.Linux.cs" />
+    <Compile Remove="Program.Linux.Light.cs" Condition="$([MSBuild]::IsOSPlatform('windows'))" />
+    <Compile Remove="Program.Light.cs" Condition="!$([MSBuild]::IsOSPlatform('windows'))" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">
+    <Compile Remove="Core\Linux\**" />
+  </ItemGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('windows'))">
+    <Compile Remove="TrayApplicationContext.cs" />
+    <Compile Remove="Core\AudioEngine.cs" />
+    <Compile Remove="Core\AsioManager.cs" />
+    <Compile Remove="Core\AsioAudioEngine.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="NDI 6 SDK\**\*.cs" />
+    <EmbeddedResource Remove="NDI 6 SDK\**\*" />
+    <Content Remove="NDI 6 SDK\**\*" />
+    <None Remove="NDI 6 SDK\**\*" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">
+    <None Include="C:\Program Files\NDI\NDI 6 SDK\Bin\x64\Processing.NDI.Lib.x64.dll" Condition="Exists('C:\Program Files\NDI\NDI 6 SDK\Bin\x64\Processing.NDI.Lib.x64.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Processing.NDI.Lib.x64.dll</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows')) AND Exists('COM_icon_windows.ico')">
+    <None Include="COM_icon_windows.ico">
+      <Link>app.ico</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

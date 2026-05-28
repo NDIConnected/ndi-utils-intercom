@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - NDI Intercom16</title>
+    <link rel="stylesheet" href="/css/settings.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <button class="back-btn" onclick="window.location.href='/index.html'">← Back</button>
+            <span class="title">Settings</span>
+        </div>
+    </div>
+
+    <div class="settings-container">
+        <!-- Application Identity -->
+        <div class="settings-section">
+            <h2>Application Identity</h2>
+            <div class="settings-group">
+                <label>Application ID:</label>
+                <input type="text" id="applicationId" maxlength="64" placeholder="Intercom_A">
+                <small style="color: #888;">Valid chars: A-Z, a-z, 0-9, underscore (_), dot (.), hyphen (-). Length: 1-64.</small>
+            </div>
+            <div class="settings-group">
+                <label>NDI source name format:</label>
+                <select id="identitySuffixMode">
+                    <option value="Compact">Compact &mdash; "Channel 1 (Intercom_A)" (recommended; max NDI compatibility)</option>
+                    <option value="Full">Full &mdash; "Channel 1 [app=...;device=...;role=sender;ch=1]" (for management apps)</option>
+                    <option value="Off">Off &mdash; "Channel 1" (for legacy receivers that fail with extra characters)</option>
+                </select>
+                <small style="color: #888;">
+                    Some legacy or embedded NDI receivers reject names with brackets / semicolons / long suffixes.
+                    Switch to <b>Compact</b> or <b>Off</b> if subscribers fail to connect. The
+                    &lt;ndi_manager&gt; XML metadata is unchanged in every mode, so management
+                    applications that read connection metadata keep working.
+                </small>
+            </div>
+        </div>
+
+        <!-- Audio Devices -->
+        <div class="settings-section" id="settingsSectionAudio">
+            <h2>Audio Devices</h2>
+            <p id="audioBackendHint" style="margin: 0 0 8px 0; color: #888; font-size: 13px;"></p>
+            <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">
+                Microphone level (VU) updates on the <a href="/index.html">main dashboard</a> over SignalR, not on this page.
+            </p>
+            <div class="settings-group">
+                <label>Microphone:</label>
+                <select id="microphoneSelect"></select>
+            </div>
+            <div class="settings-group">
+                <label>Speaker:</label>
+                <select id="speakerSelect"></select>
+            </div>
+        </div>
+
+        <!-- ASIO: DOM is injected on Windows only (see settings.js); Linux has no ASIO UI. -->
+        <div id="asioSectionMount"></div>
+
+        <!-- Microphone Noise Gate -->
+        <div class="settings-section">
+            <h2>Microphone Noise Gate</h2>
+            <p style="margin: 0 0 15px 0; color: #888; font-size: 13px;">
+                Blocks background noise from your microphone when you're not speaking.
+            </p>
+            <div class="settings-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="enableNoiseGate">
+                    Enable Noise Gate
+                </label>
+            </div>
+            <div class="settings-group">
+                <label>Threshold (dB): <span id="noiseThresholdValue">-45 dB</span></label>
+                <input type="range" id="noiseGateThreshold" min="-80" max="-10" value="-45" step="1">
+                <small style="color: #888;">Lower = more sensitive | Higher = less sensitive</small>
+            </div>
+            <div class="settings-group">
+                <label>Attack (ms): <span id="noiseAttackValue">1 ms</span></label>
+                <input type="range" id="noiseGateAttack" min="0" max="20" value="1" step="1">
+                <small style="color: #888;">How fast the gate opens (preserve consonants)</small>
+            </div>
+            <div class="settings-group">
+                <label>Release (ms): <span id="noiseReleaseValue">100 ms</span></label>
+                <input type="range" id="noiseGateRelease" min="10" max="500" value="100" step="10">
+                <small style="color: #888;">How fast the gate closes (natural sound)</small>
+            </div>
+            <div class="settings-group">
+                <label>Hold (ms): <span id="noiseHoldValue">50 ms</span></label>
+                <input type="range" id="noiseGateHold" min="0" max="200" value="50" step="10">
+                <small style="color: #888;">Keep gate open after signal drops (prevents chopping)</small>
+            </div>
+        </div>
+
+        <!-- Channels Feedback Gate -->
+        <div class="settings-section">
+            <h2>Channels Feedback Gate</h2>
+            <p style="margin: 0 0 15px 0; color: #888; font-size: 13px;">
+                Prevents audio feedback between channels during mixing.
+            </p>
+            <div class="feedback-gate-controls">
+                <div class="settings-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="enableFeedbackGate">
+                        Enable
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <label>Threshold (dB): <span id="feedbackThresholdValue">-40 dB</span></label>
+                    <input type="range" id="feedbackGateThreshold" min="-80" max="0" value="-40" step="1">
+                    <small style="color: #888;">Lower = more sensitive | Higher = less sensitive</small>
+                </div>
+                <div class="settings-group">
+                    <label>Attack (ms): <span id="feedbackAttackValue">0 ms</span></label>
+                    <input type="range" id="feedbackGateAttack" min="0" max="100" value="0" step="1">
+                    <small style="color: #888;">How fast the gate opens</small>
+                </div>
+                <div class="settings-group">
+                    <label>Release (ms): <span id="feedbackReleaseValue">200 ms</span></label>
+                    <input type="range" id="feedbackGateRelease" min="0" max="1000" value="200" step="10">
+                    <small style="color: #888;">How fast the gate closes</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- NDI Bridge Control (full width) -->
+        <div class="settings-section full-width">
+            <h2>NDI Bridge Service</h2>
+            <p style="margin: 0 0 15px 0; color: #888; font-size: 13px;">
+                Control NDI Bridge Service for network routing (Host, Join, Local modes).
+            </p>
+            
+            <!-- Connection Status -->
+            <div class="settings-group">
+                <div class="bridge-status" id="bridgeStatus">
+                    <span class="status-indicator" id="bridgeStatusIndicator">&#9679;</span>
+                    <span id="bridgeStatusText">Checking connection...</span>
+                    <button class="btn-bridge-refresh" onclick="refreshBridgeStatus()" title="Refresh Status">&#128260;</button>
+                </div>
+            </div>
+
+            <!-- Global Settings -->
+            <div id="bridgeGlobalSettings" style="display: none;">
+                <div class="bridge-global-row">
+                    <div class="settings-group" style="margin-bottom: 0;">
+                        <label>Auto Start:</label>
+                        <select id="bridgeAutoStart">
+                            <option value="0">None</option>
+                            <option value="1">Host</option>
+                            <option value="2">Join</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode Selection & Control -->
+            <div id="bridgeModeGroup" style="display: none;">
+                <div class="settings-group">
+                    <label>Active Mode: <span id="currentBridgeMode" style="color: #3498db; font-weight: bold;">NONE</span></label>
+                    <div class="bridge-mode-buttons">
+                        <button class="btn-bridge-mode" id="btnHostMode" onclick="selectBridgePanel('host')">Host</button>
+                        <button class="btn-bridge-mode" id="btnJoinMode" onclick="selectBridgePanel('join')">Join</button>
+                        <button class="btn-bridge-mode" id="btnLocalMode" onclick="selectBridgePanel('local')">Local</button>
+                        <button class="btn-bridge-stop" id="btnStopMode" onclick="stopBridgeMode()">Stop</button>
+                    </div>
+                </div>
+
+                <!-- Host Settings Panel -->
+                <div class="bridge-settings-panel" id="hostSettings" style="display: none;">
+                    <div class="bridge-panel-header">
+                        <h3>Host Mode Settings</h3>
+                        <button class="btn-bridge-start" id="btnStartHost" onclick="startBridgeMode('host')">Start Host</button>
+                    </div>
+
+                    <div class="bridge-settings-columns">
+                        <!-- Column 1: Network -->
+                        <div class="bridge-settings-col">
+                            <h4>Network</h4>
+                            <div class="settings-group">
+                                <label>Bridge Name:</label>
+                                <input type="text" id="hostBridgeName" placeholder="My Bridge Host">
+                            </div>
+                            <div class="settings-group">
+                                <label>Port:</label>
+                                <input type="number" id="hostPort" value="5990" min="1" max="65535">
+                            </div>
+                            <div class="settings-group">
+                                <label>Groups (comma-separated):</label>
+                                <input type="text" id="hostGroups" placeholder="public,test">
+                            </div>
+                            <div class="settings-group">
+                                <label>Buffer: <span id="hostBufferValue">0</span></label>
+                                <input type="range" id="hostBuffer" min="0" max="3000" value="0" step="10">
+                                <small style="color: #888;">0-3000 ms network buffer</small>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Encoding -->
+                        <div class="bridge-settings-col">
+                            <h4>Encoding</h4>
+                            <div class="settings-group">
+                                <label>HX Output:</label>
+                                <select id="hostHxOutput">
+                                    <option value="0">NDI-HX</option>
+                                    <option value="1">NDI High Bandwidth</option>
+                                    <option value="2">Do Not Transcode</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX Encoder:</label>
+                                <select id="hostHxEncoder">
+                                    <option value="0">H.264</option>
+                                    <option value="1">HEVC (H.265)</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX Quality: <span id="hostHxQualityValue">16.0 Mbit/s</span></label>
+                                <input type="range" id="hostHxQuality" min="10" max="400" value="100" step="5">
+                                <small style="color: #888;">1.6 Mbit/s (min) - 64.0 Mbit/s (max)</small>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX GPU:</label>
+                                <select id="hostHxGpu">
+                                    <option value="Auto">Auto</option>
+                                </select>
+                            </div>
+                            <div class="settings-group checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="hostNdi4Compat">
+                                    NDI4 Compatibility Mode
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Encryption & Status -->
+                        <div class="bridge-settings-col">
+                            <h4>Encryption</h4>
+                            <div class="settings-group">
+                                <label>Encryption Key:</label>
+                                <div class="encryption-row">
+                                    <input type="password" id="hostEncryptionKey" placeholder="Enter key...">
+                                    <button class="btn-encryption" onclick="setEncryptionKey('host')">Set</button>
+                                    <button class="btn-encryption btn-encryption-clear" onclick="clearEncryptionKey('host')">Clear</button>
+                                </div>
+                            </div>
+
+                            <h4>Status</h4>
+                            <div class="bridge-status-info">
+                                <div class="status-row">
+                                    <span class="status-label">Status:</span>
+                                    <span class="status-value" id="hostStatusMessage">-</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="status-label">Bandwidth:</span>
+                                    <span class="status-value" id="hostBandwidth">-</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="status-label">GPU Limit:</span>
+                                    <span class="status-value" id="hostGpuLimit">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Join Settings Panel -->
+                <div class="bridge-settings-panel" id="joinSettings" style="display: none;">
+                    <div class="bridge-panel-header">
+                        <h3>Join Mode Settings</h3>
+                        <button class="btn-bridge-start" id="btnStartJoin" onclick="startBridgeMode('join')">Start Join</button>
+                    </div>
+
+                    <div class="bridge-settings-columns">
+                        <!-- Column 1: Network -->
+                        <div class="bridge-settings-col">
+                            <h4>Network</h4>
+                            <div class="settings-group">
+                                <label>Bridge Name:</label>
+                                <input type="text" id="joinBridgeName" placeholder="My Bridge Join">
+                            </div>
+                            <div class="settings-group">
+                                <label>Host IP Address:</label>
+                                <input type="text" id="joinIp" placeholder="192.168.1.100">
+                            </div>
+                            <div class="settings-group">
+                                <label>Port:</label>
+                                <input type="number" id="joinPort" value="5990" min="1" max="65535">
+                            </div>
+                            <div class="settings-group">
+                                <label>Groups (comma-separated):</label>
+                                <input type="text" id="joinGroups" placeholder="public,test">
+                            </div>
+                            <div class="settings-group">
+                                <label>Buffer: <span id="joinBufferValue">0</span></label>
+                                <input type="range" id="joinBuffer" min="0" max="3000" value="0" step="10">
+                                <small style="color: #888;">0-3000 ms network buffer</small>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Encoding -->
+                        <div class="bridge-settings-col">
+                            <h4>Encoding</h4>
+                            <div class="settings-group">
+                                <label>HX Output:</label>
+                                <select id="joinHxOutput">
+                                    <option value="0">NDI-HX</option>
+                                    <option value="1">NDI High Bandwidth</option>
+                                    <option value="2">Do Not Transcode</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX Encoder:</label>
+                                <select id="joinHxEncoder">
+                                    <option value="0">H.264</option>
+                                    <option value="1">HEVC (H.265)</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX Quality: <span id="joinHxQualityValue">16.0 Mbit/s</span></label>
+                                <input type="range" id="joinHxQuality" min="10" max="400" value="100" step="5">
+                                <small style="color: #888;">1.6 Mbit/s (min) - 64.0 Mbit/s (max)</small>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX GPU:</label>
+                                <select id="joinHxGpu">
+                                    <option value="Auto">Auto</option>
+                                </select>
+                            </div>
+                            <div class="settings-group checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="joinNdi4Compat">
+                                    NDI4 Compatibility Mode
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Encryption & Status -->
+                        <div class="bridge-settings-col">
+                            <h4>Encryption</h4>
+                            <div class="settings-group">
+                                <label>Encryption Key:</label>
+                                <div class="encryption-row">
+                                    <input type="password" id="joinEncryptionKey" placeholder="Enter key...">
+                                    <button class="btn-encryption" onclick="setEncryptionKey('join')">Set</button>
+                                    <button class="btn-encryption btn-encryption-clear" onclick="clearEncryptionKey('join')">Clear</button>
+                                </div>
+                            </div>
+
+                            <h4>Status</h4>
+                            <div class="bridge-status-info">
+                                <div class="status-row">
+                                    <span class="status-label">Status:</span>
+                                    <span class="status-value" id="joinStatusMessage">-</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="status-label">Bandwidth:</span>
+                                    <span class="status-value" id="joinBandwidth">-</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="status-label">GPU Limit:</span>
+                                    <span class="status-value" id="joinGpuLimit">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Local Settings Panel -->
+                <div class="bridge-settings-panel" id="localSettings" style="display: none;">
+                    <div class="bridge-panel-header">
+                        <h3>Local Mode Settings</h3>
+                        <button class="btn-bridge-start" id="btnStartLocal" onclick="startBridgeMode('local')">Start Local</button>
+                    </div>
+
+                    <div class="bridge-settings-columns">
+                        <!-- Column 1: Network -->
+                        <div class="bridge-settings-col">
+                            <h4>Network</h4>
+                            <div class="settings-group">
+                                <label>Bridge Name:</label>
+                                <input type="text" id="localBridgeName" placeholder="My Bridge Local">
+                            </div>
+                            <div class="settings-group">
+                                <label>Groups (comma-separated):</label>
+                                <input type="text" id="localGroups" placeholder="public">
+                            </div>
+                            <div class="settings-group">
+                                <label>Send Groups (comma-separated):</label>
+                                <input type="text" id="localSendGroups" placeholder="public,test">
+                                <small style="color: #888;">Groups where Bridge sources appear locally</small>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Encoding -->
+                        <div class="bridge-settings-col">
+                            <h4>Encoding</h4>
+                            <div class="settings-group">
+                                <label>HX Output:</label>
+                                <select id="localHxOutput">
+                                    <option value="0">NDI-HX</option>
+                                    <option value="1">NDI High Bandwidth</option>
+                                    <option value="2">Do Not Transcode</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX Quality: <span id="localHxQualityValue">16.0 Mbit/s</span></label>
+                                <input type="range" id="localHxQuality" min="10" max="400" value="100" step="5">
+                                <small style="color: #888;">1.6 Mbit/s (min) - 64.0 Mbit/s (max)</small>
+                            </div>
+                            <div class="settings-group">
+                                <label>HX GPU:</label>
+                                <select id="localHxGpu">
+                                    <option value="Auto">Auto</option>
+                                </select>
+                            </div>
+                            <div class="settings-group checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="localNdi4Compat">
+                                    NDI4 Compatibility Mode
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Status -->
+                        <div class="bridge-settings-col">
+                            <h4>Status</h4>
+                            <div class="bridge-status-info">
+                                <div class="status-row">
+                                    <span class="status-label">Status:</span>
+                                    <span class="status-value" id="localStatusMessage">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Test -->
+                <div class="bridge-settings-panel" id="connectionTestPanel" style="display: none;">
+                    <h3>Connection Test</h3>
+                    <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">
+                        Test your network to find the optimal buffer setting. Requires at least one active connection.
+                    </p>
+                    <div class="connection-test-row">
+                        <div class="settings-group" style="flex: 1; margin-bottom: 0;">
+                            <label>Test Bitrate (Mbps):</label>
+                            <input type="number" id="connectionTestBitrate" value="20" min="1">
+                        </div>
+                        <button class="btn-bridge-start" id="btnConnectionTestStart" onclick="startConnectionTest()">Start Test</button>
+                        <button class="btn-bridge-stop" id="btnConnectionTestStop" onclick="stopConnectionTest()" style="display: none;">Stop Test</button>
+                    </div>
+                    <div id="connectionTestResult" style="display: none; margin-top: 12px; padding: 10px; background: rgba(52, 152, 219, 0.1); border-radius: 6px;">
+                        <span id="connectionTestMessage" style="font-size: 13px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channels Configuration -->
+        <div class="settings-section full-width">
+            <h2>Channels Configuration</h2>
+            <div class="ndi-channels-grid" id="ndiChannelsGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="settings-actions">
+            <button class="btn-cancel" onclick="window.location.href='/index.html'">Cancel</button>
+            <button class="btn-apply" onclick="applySettings()">Apply</button>
+            <a href="https://ndi.video" target="_blank" class="btn-link">ndi.video</a>
+        </div>
+    </div>
+
+    <script src="/js/signalr.min.js"></script>
+    <script src="/js/settings.js"></script>
+</body>
+</html>

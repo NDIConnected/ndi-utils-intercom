@@ -1,0 +1,180 @@
+PROPRIETARY SOFTWARE LICENSE AGREEMENT
+NDI Intercom16
+
+Copyright (c) 2026 Vizrt NDI AB. All Rights Reserved.
+
+================================================================================
+
+1. DEFINITIONS
+
+"Software" refers to NDI Intercom16, including all source code, compiled
+binaries, documentation, and associated materials.
+
+"Licensor" refers to Vizrt NDI AB, the copyright holder and owner of the Software.
+
+"Licensee" refers to any individual or organization authorized by the Licensor
+to use the Software.
+
+"Internal Use" refers to use of the Software exclusively within organizations
+or entities owned, controlled, or operated by Vizrt NDI AB.
+
+================================================================================
+
+2. GRANT OF LICENSE
+
+Subject to the terms and conditions of this Agreement, the Licensor grants to
+authorized Licensees a non-exclusive, non-transferable, revocable license to
+use the Software solely for Internal Use as defined above.
+
+This license permits:
+- Installation and operation of the Software
+- Use of all features and functionalities
+- Creation of backup copies for archival purposes
+- Use on multiple machines within authorized organizations
+
+================================================================================
+
+3. RESTRICTIONS
+
+The Licensee shall NOT, without prior written authorization from the Licensor:
+
+a) Distribute, sell, lease, rent, or sublicense the Software to third parties
+b) Make the Software available to the public or unauthorized parties
+c) Modify, adapt, translate, reverse engineer, decompile, or disassemble the Software
+d) Remove or alter any copyright, trademark, or proprietary notices from the Software
+e) Use the Software for commercial purposes outside authorized organizations
+f) Create derivative works based on the Software
+g) Use the Software in any manner that violates applicable laws or regulations
+
+================================================================================
+
+4. OWNERSHIP AND INTELLECTUAL PROPERTY
+
+The Software is proprietary and confidential. The Licensor retains all right,
+title, and interest in and to the Software, including all intellectual property
+rights. This Agreement does not grant any ownership rights to the Licensee.
+
+The Software is protected by copyright laws and international treaty provisions.
+
+================================================================================
+
+5. LICENSE TRANSFER
+
+The Licensor reserves the exclusive right to:
+- Grant licenses to third parties
+- Transfer or assign licenses
+- Modify licensing terms for specific entities
+- Revoke licenses at their discretion
+
+Any transfer of license rights to third parties requires explicit written
+authorization from Vizrt NDI AB.
+
+================================================================================
+
+6. THIRD-PARTY COMPONENTS
+
+The Software incorporates third-party libraries and components, each governed
+by their respective licenses. A complete list of third-party components and
+their licenses is provided in the THIRD-PARTY-LICENSES.txt file.
+
+The Licensee agrees to comply with all applicable third-party license terms.
+
+================================================================================
+
+7. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+The Licensor does not warrant that:
+- The Software will meet Licensee's requirements
+- The Software will operate uninterrupted or error-free
+- All defects will be corrected
+
+================================================================================
+
+8. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT,
+OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
+LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION,
+OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE
+SOFTWARE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+================================================================================
+
+9. SUPPORT AND MAINTENANCE
+
+This license does not include any obligation for the Licensor to provide:
+- Technical support
+- Software updates or upgrades
+- Bug fixes or patches
+- Maintenance services
+
+Any support or maintenance services, if provided, are offered at the sole
+discretion of the Licensor.
+
+================================================================================
+
+10. TERMINATION
+
+This license is effective until terminated. The Licensor may terminate this
+license immediately if the Licensee fails to comply with any term or condition
+of this Agreement.
+
+Upon termination, the Licensee must:
+- Cease all use of the Software
+- Destroy all copies of the Software in their possession
+- Certify in writing the destruction of all copies
+
+================================================================================
+
+11. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws
+of Italy, without regard to its conflict of law provisions.
+
+Any disputes arising from this Agreement shall be subject to the exclusive
+jurisdiction of the courts of Italy.
+
+================================================================================
+
+12. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between the Licensor and
+Licensee regarding the Software and supersedes all prior or contemporaneous
+understandings or agreements, written or oral, regarding such subject matter.
+
+================================================================================
+
+13. MODIFICATIONS
+
+The Licensor reserves the right to modify the terms of this Agreement at any
+time. Continued use of the Software after such modifications constitutes
+acceptance of the modified terms.
+
+================================================================================
+
+14. CONTACT INFORMATION
+
+For licensing inquiries, permissions, or other questions regarding this
+Agreement, please contact:
+
+Vizrt NDI AB
+Website: https://ndi.video
+Email: [contact information to be added]
+
+================================================================================
+
+BY INSTALLING, COPYING, OR OTHERWISE USING THE SOFTWARE, YOU ACKNOWLEDGE THAT
+YOU HAVE READ THIS AGREEMENT, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS
+TERMS AND CONDITIONS.
+
+IF YOU DO NOT AGREE TO THESE TERMS, DO NOT INSTALL OR USE THE SOFTWARE.
+
+================================================================================
+
+NDI Intercom16 - Proprietary Software
+Copyright (c) 2026 Vizrt NDI AB
+All Rights Reserved

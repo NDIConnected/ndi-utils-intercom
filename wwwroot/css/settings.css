@@ -1,0 +1,702 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #303030 0%, #0c0c0c 100%);
+    color: #ffffff;
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(90deg, #000000 0%, #181818 100%);
+    padding: 25px 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.back-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 22px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.title {
+    font-size: 30px;
+    font-weight: 600;
+}
+
+/* Settings Container
+ *
+ * CSS multicol (column-count) instead of CSS grid: the grid 2-col layout was
+ * row-aligned and produced an empty band below short sections (e.g. ASIO Device)
+ * when paired with a much taller section in the same row (e.g. Microphone Noise
+ * Gate). multicol lets the browser pack sections vertically in each column with
+ * no row alignment, so the shorter section's slot gets filled by the next one
+ * down — masonry-like behavior without an actual masonry spec.
+ *
+ * Wide-screen sections (NDI Bridge, Channels Configuration) use
+ * `column-span: all` to break out of the columns and span the full width.
+ */
+.settings-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 16px;
+    column-count: 2;
+    column-gap: 20px;
+}
+
+@media (max-width: 1000px) {
+    .settings-container {
+        column-count: 1;
+    }
+}
+
+/* Settings Section */
+.settings-section {
+    background: rgba(18, 18, 19, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    /* Each section is a single multicol "item": never split a section across
+     * columns and never let a column break happen inside it. */
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid; /* legacy WebKit / Safari fallback */
+    page-break-inside: avoid;            /* legacy fallback */
+    /* Replicates the previous grid `gap: 20px` between cards. */
+    margin: 0 0 20px 0;
+    /* `display: block` makes break-inside reliable in all engines (some
+     * historically refused to honor it on flex/grid items). */
+    display: block;
+}
+
+.settings-section.full-width {
+    /* Span all columns and reset the multicol flow underneath, so any sections
+     * that follow in source order start fresh from the top of the columns. */
+    column-span: all;
+    -webkit-column-span: all;
+}
+
+.settings-section h2 {
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #3498db;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.settings-group {
+    margin-bottom: 20px;
+}
+
+.settings-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.settings-group select,
+.settings-group input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.settings-group select {
+    padding-right: 35px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.settings-group select:focus,
+.settings-group input[type="text"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.settings-group select option {
+    background: rgba(26, 26, 46, 0.95) !important;
+    background-color: rgba(26, 26, 46, 0.95) !important;
+    color: white !important;
+    padding: 10px;
+}
+
+.settings-group input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    outline: none;
+}
+
+.settings-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #3498db;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.settings-group input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #3498db;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+/* Feedback Gate Controls */
+.feedback-gate-controls {
+    display: block;
+}
+
+.feedback-gate-controls .settings-group {
+    margin-bottom: 20px;
+}
+
+/* NDI Channels Grid */
+.ndi-channels-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 1600px) {
+    .ndi-channels-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .ndi-channels-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .ndi-channels-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Media query per altezza ridotta - 8 canali in riga orizzontale */
+@media (max-height: 800px) {
+    .ndi-channels-grid {
+        grid-template-columns: repeat(8, 1fr);
+        gap: 12px;
+    }
+}
+
+.ndi-channel {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ndi-channel h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: #3498db;
+}
+
+.ndi-channel label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ndi-channel select {
+    width: 100%;
+    padding: 8px;
+    padding-right: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='white' d='M5 7.5L1 3.5h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    cursor: pointer;
+}
+
+.ndi-channel select option {
+    background: rgba(26, 26, 46, 0.95) !important;
+    background-color: rgba(26, 26, 46, 0.95) !important;
+    color: white !important;
+    padding: 8px;
+}
+
+.ndi-channel input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+.ndi-channel input[type="text"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Action Buttons */
+.settings-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.btn-cancel,
+.btn-apply,
+.btn-link,
+.btn-scan {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-scan {
+    background: #3498db;
+    color: white;
+    width: 100%;
+}
+
+.btn-scan:hover {
+    background: #5dade2;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-apply {
+    background: #27ae60;
+    color: white;
+    flex-grow: 1;
+}
+
+.btn-apply:hover {
+    background: #2ecc71;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+.btn-link {
+    background: #3498db;
+    color: white;
+}
+
+.btn-link:hover {
+    background: #5dade2;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+/* Loading */
+.loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    text-align: center;
+}
+
+/* NDI Bridge Styles */
+.bridge-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-indicator {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.status-indicator.connected {
+    color: #27ae60;
+}
+
+.status-indicator.disconnected {
+    color: #e74c3c;
+}
+
+.btn-bridge-refresh {
+    background: transparent;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    margin-left: auto;
+    transition: all 0.3s;
+}
+
+.btn-bridge-refresh:hover {
+    transform: rotate(180deg);
+}
+
+/* Global settings row */
+.bridge-global-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bridge-global-row .settings-group {
+    flex: 0 0 200px;
+}
+
+/* Mode selection buttons */
+.bridge-mode-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) auto;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-bridge-mode,
+.btn-bridge-stop {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-bridge-mode {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.4);
+}
+
+.btn-bridge-mode:hover {
+    background: rgba(52, 152, 219, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Selected tab (panel visible but mode not running) */
+.btn-bridge-mode.selected {
+    background: rgba(52, 152, 219, 0.35);
+    color: #fff;
+    border: 1px solid rgba(52, 152, 219, 0.7);
+}
+
+/* Active mode (currently running on Bridge) */
+.btn-bridge-mode.active {
+    background: #3498db;
+    color: white;
+    border: 1px solid #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+}
+
+.btn-bridge-stop {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.4);
+}
+
+.btn-bridge-stop:hover {
+    background: rgba(231, 76, 60, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-bridge-stop:disabled,
+.btn-bridge-mode:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Settings panel */
+.bridge-settings-panel {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bridge-settings-panel h3 {
+    font-size: 14px;
+    color: #3498db;
+    margin-bottom: 12px;
+}
+
+.bridge-settings-panel .settings-group {
+    margin-bottom: 12px;
+}
+
+.bridge-settings-panel .settings-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Panel header with title + start button */
+.bridge-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bridge-panel-header h3 {
+    margin-bottom: 0;
+}
+
+.btn-bridge-start {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #27ae60;
+    color: white;
+}
+
+.btn-bridge-start:hover {
+    background: #2ecc71;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+.btn-bridge-start:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Multi-column layout for settings */
+.bridge-settings-columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 1200px) {
+    .bridge-settings-columns {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 800px) {
+    .bridge-settings-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bridge-settings-col h4 {
+    font-size: 13px;
+    color: rgba(52, 152, 219, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Number inputs inside bridge panels - match standard text inputs */
+.bridge-settings-panel input[type="text"],
+.bridge-settings-panel input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.bridge-settings-panel input[type="number"]::-webkit-outer-spin-button,
+.bridge-settings-panel input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.bridge-settings-panel input[type="text"]:focus,
+.bridge-settings-panel input[type="number"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Encryption row */
+.encryption-row {
+    display: flex;
+    gap: 8px;
+}
+
+.encryption-row input[type="password"] {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+}
+
+.encryption-row input[type="password"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.btn-encryption {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    white-space: nowrap;
+}
+
+.btn-encryption:hover {
+    background: rgba(52, 152, 219, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-encryption-clear {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.btn-encryption-clear:hover {
+    background: rgba(231, 76, 60, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Status info display */
+.bridge-status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-label {
+    font-size: 12px;
+    color: #888;
+    font-weight: 600;
+}
+
+.status-value {
+    font-size: 12px;
+    color: #ccc;
+}
+
+/* Connection test */
+.connection-test-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.connection-test-row .btn-bridge-start,
+.connection-test-row .btn-bridge-stop {
+    white-space: nowrap;
+    height: fit-content;
+}

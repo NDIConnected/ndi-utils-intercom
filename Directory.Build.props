@@ -1,0 +1,62 @@
+<Project>
+  <!--
+    NDI Intercom16 and NDI Intercom2 live in the same directory. Without separate bin/obj,
+    the .NET apphost for one exe can embed the other product's main DLL name (e.g. Intercom16.dll inside Intercom2.exe).
+    Only these two project names are matched so NDI SDK sample projects under this repo are unchanged.
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16'">
+    <BaseOutputPath>bin\NDIIntercom16\</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj\NDIIntercom16\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom2'">
+    <BaseOutputPath>bin\NDIIntercom2\</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj\NDIIntercom2\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16.Linux'">
+    <BaseOutputPath>bin\NDIIntercom16Linux\</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj\NDIIntercom16Linux\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <!--
+    Local publish folders + all of bin/ and obj/: with split BaseOutputPath, SDK only excludes each project's own
+    bin\NDIIntercomN\ subtree — the sibling product's output still sat under bin\ and was globbed as Content (infinite nesting).
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2' Or '$(MSBuildProjectName)' == 'NDI Intercom16.Linux'">
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;publish\**;publish-intercom2\**;publish-intercom2-verify\**;publish-intercom2-verify2\**;Installer-Output\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!--
+    Linux: bundle libndi.so.6 next to the app (P/Invoke name matches NDI SDK headers).
+    Layout: <root>/lib/<triplet>/libndi.so.6 — e.g. official tree or $(HOME)/SDK/NDI_SDK_for_Linux.
+    Set NDI_SDK_LINUX_ROOT / NDI_SDK_LINUX_ARCH / NDI_LINUX_LIB to override; env vars are honored when named the same.
+  -->
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2')">
+    <NDI_SDK_LINUX_ARCH Condition="'$(NDI_SDK_LINUX_ARCH)' == ''">x86_64-linux-gnu</NDI_SDK_LINUX_ARCH>
+  </PropertyGroup>
+  <!-- Pick SDK root when unset: official installer path first, then common ~/SDK/NDI_SDK_for_Linux layout. -->
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And '$(NDI_SDK_LINUX_ROOT)' == '' And Exists('$(HOME)/NDI SDK for Linux/lib/$(NDI_SDK_LINUX_ARCH)/libndi.so.6')">
+    <NDI_SDK_LINUX_ROOT>$(HOME)/NDI SDK for Linux</NDI_SDK_LINUX_ROOT>
+  </PropertyGroup>
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And '$(NDI_SDK_LINUX_ROOT)' == '' And Exists('$(HOME)/SDK/NDI_SDK_for_Linux/lib/$(NDI_SDK_LINUX_ARCH)/libndi.so.6')">
+    <NDI_SDK_LINUX_ROOT>$(HOME)/SDK/NDI_SDK_for_Linux</NDI_SDK_LINUX_ROOT>
+  </PropertyGroup>
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And '$(NDI_SDK_LINUX_ROOT)' == ''">
+    <NDI_SDK_LINUX_ROOT>$(HOME)/NDI SDK for Linux</NDI_SDK_LINUX_ROOT>
+  </PropertyGroup>
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And '$(NDI_SDK_LINUX_ROOT)' != ''">
+    <_NdiLinuxSdkLib>$(NDI_SDK_LINUX_ROOT)/lib/$(NDI_SDK_LINUX_ARCH)/libndi.so.6</_NdiLinuxSdkLib>
+  </PropertyGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And '$(NDI_LINUX_LIB)' != '' And Exists('$(NDI_LINUX_LIB)')">
+    <None Include="$(NDI_LINUX_LIB)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libndi.so.6</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('windows')) And ('$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2') And ('$(NDI_LINUX_LIB)' == '' Or !Exists('$(NDI_LINUX_LIB)')) And Exists('$(_NdiLinuxSdkLib)')">
+    <None Include="$(_NdiLinuxSdkLib)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libndi.so.6</Link>
+    </None>
+  </ItemGroup>
+</Project>

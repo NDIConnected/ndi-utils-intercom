@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDI Intercom16</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <img src="/ndi-logo.png" alt="NDI" class="logo">
+            <span class="title">Intercom16</span>
+        </div>
+        <div class="vu-meter-container">
+            <span class="vu-label">Input Level</span>
+            <div class="vu-meter">
+                <div class="vu-meter-fill" id="vuMeterFill"></div>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="save-btn" onclick="showSavePresetModal()">
+                💾 Save
+            </button>
+            <button class="load-btn" onclick="showLoadPresetModal()">
+                📂 Load
+            </button>
+            <button class="settings-btn" onclick="window.location.href='/settings.html'">
+                Settings ⚙
+            </button>
+        </div>
+    </div>
+
+    <!-- Save Preset Modal -->
+    <div id="savePresetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSavePresetModal()">&times;</span>
+            <h2>Save Configuration Preset</h2>
+            <p>Enter a name for this preset:</p>
+            <input type="text" id="presetNameInput" placeholder="Preset name" />
+            <div class="modal-buttons">
+                <button class="modal-btn-save" onclick="savePreset()">Save</button>
+                <button class="modal-btn-cancel" onclick="closeSavePresetModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Preset Modal -->
+    <div id="loadPresetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLoadPresetModal()">&times;</span>
+            <h2>Load Configuration Preset</h2>
+            <p>Select a preset to load:</p>
+            <div id="presetsList" class="presets-list">
+                <!-- Presets will be populated by JavaScript -->
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn-cancel" onclick="closeLoadPresetModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Channels Grid (8x8) -->
+    <div class="channels-grid" id="channelsGrid">
+        <!-- Channels will be populated by JavaScript -->
+    </div>
+
+    <script src="/js/signalr.min.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>

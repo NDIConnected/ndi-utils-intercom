@@ -1,0 +1,37 @@
+# Build output
+bin/
+obj/
+publish/
+publish-intercom2/
+publish-linux/
+
+# NDI SDK examples (install NDI 6 SDK under Program Files; do not commit vendor tree)
+NDI 6 SDK/
+
+# Local AI / editor settings
+.claude/
+
+# IDE
+.vs/
+*.user
+*.suo
+wwwroot/.vscode/
+
+# Temp files
+*.tmp
+
+# Installer artifacts
+Installer-Output/
+
+# Debug logs
+.cursor/debug.log
+
+# Runtime log files (FileLoggerProvider; safety net even though logs live under
+# %ProgramData% / ~/.local/share by default and shouldn't be inside the workspace)
+logs/
+*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
