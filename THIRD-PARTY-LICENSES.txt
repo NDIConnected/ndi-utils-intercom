@@ -1,8 +1,11 @@
 THIRD-PARTY SOFTWARE LICENSES
-NDI Intercom16
+NDI Intercom16 / NDI Intercom2
 
-This software includes the following third-party libraries and components,
-each subject to its own license terms:
+NDI Intercom application source code is licensed under the MIT License — see
+LICENSE (Copyright (c) 2026 Vizrt NDI AB).
+
+This document lists third-party libraries and components bundled with or used by
+the application, each subject to its own license terms:
 
 ================================================================================
 
@@ -106,8 +109,9 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-This application is developed and distributed by NDI (Vizrt NDI AB).
-The NDI SDK is used under internal license terms.
+This application is developed by Vizrt NDI AB. The NDI SDK runtime is subject to
+the NDI SDK license terms from https://ndi.video (separate from the MIT license
+for NDI Intercom application code).
 
 NDI® is a registered trademark of Vizrt NDI AB.
 
@@ -140,8 +144,8 @@ copyright holders directly.
 
 ================================================================================
 
-This document was generated for NDI Intercom16 v1.5.0
-Last updated: February 2026
+This document applies to NDI Intercom16 / NDI Intercom2 v1.7.3
+Last updated: May 2026
 
 Copyright (c) 2026 Vizrt NDI AB
-NDI Intercom16 is proprietary software - see LICENSE.txt for terms
+NDI Intercom is MIT-licensed application software — see LICENSE

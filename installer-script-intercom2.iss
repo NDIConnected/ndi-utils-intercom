@@ -18,7 +18,7 @@ AppSupportURL=https://ndi.video
 AppUpdatesURL=https://ndi.video
 DefaultDirName={autopf}\NDI\NDI Intercom2
 DefaultGroupName=NDI Intercom2
-LicenseFile=LICENSE.txt
+LicenseFile=LICENSE
 OutputDir=Installer-Output
 OutputBaseFilename=NDI-Intercom2-Setup-v1.7.3
 SetupIconFile=COM_icon_windows.ico
@@ -32,7 +32,7 @@ UninstallDisplayName=NDI Intercom2 v1.7.3
 VersionInfoVersion=1.7.3
 VersionInfoCompany=NDI
 VersionInfoDescription=NDI Intercom2 Installer
-VersionInfoCopyright=Copyright (C) 2026 NDI
+VersionInfoCopyright=Copyright (C) 2026 Vizrt NDI AB
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 
@@ -46,6 +46,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "publish-intercom2\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "COM_icon_windows.ico"; DestDir: "{app}"; DestName: "app.ico"; Flags: ignoreversion
 Source: "wwwroot\*"; DestDir: "{app}\wwwroot"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "DOCS\INTERCOM USER_MANUAL.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "DOCS\API_REST_GUIDE.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "DOCS\NDI-BRIDGE-INTEGRATION.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion

@@ -147,4 +147,6 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 
 ## License
 
-See [LICENSE.txt](LICENSE.txt).
+MIT License — Copyright (c) 2026 Vizrt NDI AB. See [LICENSE](LICENSE).
+
+Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).

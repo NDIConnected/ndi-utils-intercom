@@ -21,7 +21,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\NDI\{#MyAppName}
 DefaultGroupName={#MyAppName}
-LicenseFile={#SourcePath}\LICENSE.txt
+LicenseFile={#SourcePath}\LICENSE
 OutputDir={#SourcePath}\Installer-Output
 OutputBaseFilename=NDI-Intercom16-Setup-v{#MyAppVersion}
 SetupIconFile={#SourcePath}\COM_icon_windows.ico
@@ -35,7 +35,7 @@ UninstallDisplayName={#MyAppName} v{#MyAppVersion}
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Installer
-VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}
+VersionInfoCopyright=Copyright (C) 2026 Vizrt NDI AB
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 
@@ -55,6 +55,10 @@ Source: "{#SourcePath}\COM_icon_windows.ico"; DestDir: "{app}"; DestName: "app.i
 
 ; Web interface files
 Source: "{#SourcePath}\wwwroot\*"; DestDir: "{app}\wwwroot"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; License files (MIT + third-party notices)
+Source: "{#SourcePath}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}\THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 ; User manual and documentation
 Source: "{#SourcePath}\DOCS\INTERCOM USER_MANUAL.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion

@@ -215,5 +215,7 @@ For issues or questions:
 
 ## License
 
-NDI Intercom Plugin
+Distributed with NDI Intercom under the MIT License (Copyright (c) 2026 Vizrt NDI AB).
+See LICENSE in the repository root.
+
 Compatible with NDI Intercom v1.0.12+

@@ -1323,4 +1323,5 @@ Web Interface:
 
 ---
 
-Copyright 2026 NDI Intercom16 - Powered by NDI Technology
+Copyright (c) 2026 Vizrt NDI AB — MIT License (see LICENSE).
+NDI® is a registered trademark of Vizrt NDI AB.

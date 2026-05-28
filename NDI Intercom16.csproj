@@ -7,7 +7,10 @@
     <AssemblyVersion>1.7.3.0</AssemblyVersion>
     <FileVersion>1.7.3.0</FileVersion>
     <InformationalVersion>1.7.3</InformationalVersion>
-    <Authors>NDI</Authors>
+    <Authors>Vizrt NDI AB</Authors>
+    <Company>Vizrt NDI AB</Company>
+    <Copyright>Copyright (c) 2026 Vizrt NDI AB</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Product>NDI Intercom16</Product>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('windows')) AND Exists('COM_icon_windows.ico')">COM_icon_windows.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

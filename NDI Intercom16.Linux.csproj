@@ -9,7 +9,10 @@
     <AssemblyVersion>1.7.3.0</AssemblyVersion>
     <FileVersion>1.7.3.0</FileVersion>
     <InformationalVersion>1.7.3</InformationalVersion>
-    <Authors>NDI</Authors>
+    <Authors>Vizrt NDI AB</Authors>
+    <Company>Vizrt NDI AB</Company>
+    <Copyright>Copyright (c) 2026 Vizrt NDI AB</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Product>NDI Intercom16 (Linux)</Product>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
