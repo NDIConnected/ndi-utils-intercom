@@ -72,7 +72,7 @@ Ideal for:
 
 ## Installation
 
-1. Download the `NDI-Intercom16-Setup-v1.5.0.exe` file
+1. Download `NDI-Intercom16-Setup-v1.7.3.exe` from the [releases page](https://github.com/NDIConnected/ndi-utils-intercom/releases)
 2. Run the installer with administrator privileges
 3. Follow the guided procedure:
    - Accept the license
@@ -420,11 +420,10 @@ NDI Intercom16 includes a plugin for **Elgato Stream Deck** that provides hardwa
 3. Restart Stream Deck software
 
 **Option B: Manual Installation**
-1. Navigate to: `C:\TEMP\NDI_INTERCOM _16\StreamDeck-Plugin\`
-2. Run: `install-plugin.ps1`
-3. Quit Stream Deck software completely (right-click tray → Quit)
-4. Restart Stream Deck software
-5. Look for "NDI Intercom16" in the actions list
+1. Copy `StreamDeck-Plugin\com.ndi.intercom16.sdPlugin` to `%APPDATA%\Elgato\StreamDeck\Plugins\`, or run `install-streamdeck-plugin.ps1` from the application install folder
+2. Quit Stream Deck software completely (right-click tray → Quit)
+3. Restart Stream Deck software
+4. Look for "NDI Intercom16" in the actions list
 
 ### Plugin Actions
 
@@ -542,7 +541,7 @@ Example layout for control room operator:
 1. Verify plugin is installed:
    - Check: `%APPDATA%\Elgato\StreamDeck\Plugins\com.ndi.intercom16.sdPlugin\`
 2. Restart Stream Deck software completely (Quit → Reopen)
-3. Reinstall plugin using `install-plugin.ps1`
+3. Reinstall the plugin using `install-streamdeck-plugin.ps1` from the application folder
 
 #### Problem: Buttons don't update automatically
 
@@ -1177,7 +1176,7 @@ A:
 
 To report issues, provide:
 
-1. **Application version**: v1.5.0 (NDI Intercom16)
+1. **Application version**: v1.7.3 (NDI Intercom16)
 2. **Operating System**: (e.g., Windows 11 Pro 24H2)
 3. **Configuration**:
    ```powershell
@@ -1278,6 +1277,18 @@ Web Interface:
 
 ### Version History
 
+**v1.7.3** (May 2026)
+- Settings page layout fix (CSS multi-column layout)
+
+**v1.7.2** (May 2026)
+- Correct decoding of incoming NDI stereo audio (FLTP planar)
+
+**v1.7.1** (May 2026)
+- Selectable NDI source name suffix mode (Full / Compact / Off)
+
+**v1.7.0** (May 2026)
+- 24/7 stability hardening, identity-aware NDI routing, `/healthz` endpoint
+
 **v1.5.0** (February 2026)
 - **Unified Intercom Groups**: NDI and ASIO channels can now participate in the same group
   - Cross-mode N-1 mixing: NDI and ASIO users hear each other seamlessly
@@ -1317,9 +1328,9 @@ Web Interface:
 
 ---
 
-**Manual Version**: 5.0
-**Date**: February 2026
-**Application**: NDI Intercom16 v1.5.0
+**Manual Version**: 1.7.3  
+**Date**: May 2026  
+**Application**: NDI Intercom16 v1.7.3
 
 ---
 

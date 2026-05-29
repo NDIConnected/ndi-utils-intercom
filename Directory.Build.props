@@ -12,16 +12,8 @@
     <BaseOutputPath>bin\NDIIntercom2\</BaseOutputPath>
     <BaseIntermediateOutputPath>obj\NDIIntercom2\</BaseIntermediateOutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16.Linux'">
-    <BaseOutputPath>bin\NDIIntercom16Linux\</BaseOutputPath>
-    <BaseIntermediateOutputPath>obj\NDIIntercom16Linux\</BaseIntermediateOutputPath>
-  </PropertyGroup>
-  <!--
-    Local publish folders + all of bin/ and obj/: with split BaseOutputPath, SDK only excludes each project's own
-    bin\NDIIntercomN\ subtree — the sibling product's output still sat under bin\ and was globbed as Content (infinite nesting).
-  -->
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2' Or '$(MSBuildProjectName)' == 'NDI Intercom16.Linux'">
-    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;publish\**;publish-intercom2\**;publish-intercom2-verify\**;publish-intercom2-verify2\**;Installer-Output\**</DefaultItemExcludes>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'NDI Intercom16' Or '$(MSBuildProjectName)' == 'NDI Intercom2'">
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;publish\**;publish-intercom2\**;Installer-Output\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!--

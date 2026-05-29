@@ -1,12 +1,5 @@
 ; NDI Intercom2 (2-channel) - Inno Setup 6
-;
-; >>> OBBLIGATORIO: la cartella "publish-intercom2" deve esistere ed essere PIENA di file. <<<
-; Se compili qui e vedi "No files found matching ... publish-intercom2\*":
-;   1) Chiudi NDI Intercom2.exe se in esecuzione
-;   2) Doppio clic su:  build-intercom2-installer.cmd   (publish + ISCC automatici)
-;      oppure PowerShell:  .\build-installer-intercom2.ps1
-;      oppure solo publish:
-;        dotnet publish "NDI Intercom2.csproj" -c Release -r win-x64 --self-contained true -o "publish-intercom2"
+; Run build-intercom2-installer.cmd to publish and compile, or publish to publish-intercom2 first.
 
 [Setup]
 AppId={{C4D5E6F7-A8B9-0123-CDEF-123456789ABC}

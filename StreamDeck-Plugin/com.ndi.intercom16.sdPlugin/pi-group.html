@@ -100,10 +100,7 @@
                 try {
                     actionInfo = JSON.parse(inActionInfo);
 
-                    // Show group selection only for setgroup action
-                    if (actionInfo.action === 'com.ndi.intercom.setgroup') {
-                        document.getElementById('groupSelection').style.display = 'block';
-                    }
+                    // Legacy setgroup action removed; Rotate Group uses rotategroup UUID.
                 } catch (e) {
                     console.error('Error parsing actionInfo:', e);
                 }

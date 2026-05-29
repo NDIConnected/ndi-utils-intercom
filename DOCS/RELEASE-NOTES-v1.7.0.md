@@ -63,7 +63,7 @@ Six classes of issues that compound over long uptimes were addressed:
 
 - All three csproj files (Intercom16 Windows, Intercom2 Windows, Intercom16 Linux) bumped to `<Version>1.7.0</Version>`.
 - `<ndi_product version=…>` reports `1.7.0` for both products.
-- `installer-script-v1.5.iss` + `installer-script-intercom2.iss` updated to `MyAppVersion=1.7.0`.
+- `installer-script-intercom16.iss` + `installer-script-intercom2.iss` updated to `MyAppVersion=1.7.0`.
 
 ---
 
@@ -111,9 +111,9 @@ To force a clean start, delete:
 
 Versioning:
 
-- `NDI Intercom16.csproj`, `NDI Intercom2.csproj`, `NDI Intercom16.Linux.csproj` — `<Version>1.7.0</Version>`.
+- `NDI Intercom16.csproj`, `NDI Intercom2.csproj` — `<Version>1.7.0</Version>`.
 - `Models/IntercomProductOptions.cs` — `NdiProductVersion = "1.7.0"`.
-- `installer-script-v1.5.iss`, `installer-script-intercom2.iss` — `MyAppVersion = "1.7.0"`.
+- `installer-script-intercom16.iss`, `installer-script-intercom2.iss` — `MyAppVersion = "1.7.0"`.
 
 ---
 

@@ -76,7 +76,8 @@ dotnet publish "NDI Intercom16.csproj" -c Release -r win-x64 --self-contained tr
 
 2. Ensure `publish\` contains `Processing.NDI.Lib.x64.dll` (copied from the SDK path in the `.csproj`, or copy manually).
 
-3. Compile **Inno Setup** with [installer-script-v1.5.iss](installer-script-v1.5.iss) (expects output under `publish\`).  
+3. Compile **Inno Setup** with [installer-script-intercom16.iss](installer-script-intercom16.iss) (expects output under `publish\`).  
+   Or run [build-intercom16-installer.cmd](build-intercom16-installer.cmd) to publish and compile in one step.  
    Result: `Installer-Output\NDI-Intercom16-Setup-v1.7.3.exe` (version follows `#define` in the `.iss`).
 
 ### NDI Intercom2
@@ -140,8 +141,9 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 ├── NDI Intercom2.csproj
 ├── NDI-Intercom.sln
 ├── Directory.Build.props    # Per-product output dirs + safe DefaultItemExcludes
-├── installer-script-v1.5.iss
+├── installer-script-intercom16.iss
 ├── installer-script-intercom2.iss
+├── build-intercom16-installer.cmd
 └── build-intercom2-installer.cmd
 ```
 

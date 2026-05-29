@@ -1,6 +1,6 @@
 ; NDI Intercom16 Installer Script v1.7.3
 ; Inno Setup 6.x required
-; Unified NDI+ASIO Intercom Groups, NDI Bridge Integration
+; Run build-intercom16-installer.cmd to publish and compile, or publish to .\publish first.
 
 #define MyAppName "NDI Intercom16"
 #define MyAppVersion "1.7.3"
@@ -11,7 +11,6 @@
 #define PublishPath ".\publish"
 
 [Setup]
-; Basic application information
 AppId={{7A5F2B9D-8E3C-4D1F-9B6A-2C8E4F7D1A3B}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -47,30 +46,16 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "streamdeckplugin"; Description: "Install Stream Deck Plugin"; GroupDescription: "Optional Components:"; Flags: unchecked
 
 [Files]
-; Main application files (all published files including .NET runtime)
 Source: "{#PublishPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Application icon (for tray icon at runtime)
 Source: "{#SourcePath}\COM_icon_windows.ico"; DestDir: "{app}"; DestName: "app.ico"; Flags: ignoreversion
-
-; Web interface files
 Source: "{#SourcePath}\wwwroot\*"; DestDir: "{app}\wwwroot"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; License files (MIT + third-party notices)
 Source: "{#SourcePath}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
-
-; User manual and documentation
 Source: "{#SourcePath}\DOCS\INTERCOM USER_MANUAL.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\API_REST_GUIDE.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\STREAMDECK_PLUGIN_GUIDE.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\NDI-BRIDGE-INTEGRATION.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\NDI-BRIDGE-QUICK-START.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
-
-; Channel configuration template
-Source: "{#SourcePath}\channels16.json"; DestDir: "{app}"; Flags: ignoreversion
-
-; Stream Deck plugin files (optional)
 Source: "{#SourcePath}\StreamDeck-Plugin\*"; DestDir: "{app}\StreamDeck-Plugin"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: streamdeckplugin
 Source: "{#SourcePath}\install-streamdeck-plugin.ps1"; DestDir: "{app}"; Flags: ignoreversion; Tasks: streamdeckplugin
 
@@ -80,10 +65,7 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"; Comment: "Launch NDI Intercom16"; Tasks: desktopicon
 
 [Run]
-; Install Stream Deck plugin if task selected
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\install-streamdeck-plugin.ps1"" -SourcePath ""{app}"""; Flags: runhidden; Tasks: streamdeckplugin; Description: "Installing Stream Deck Plugin..."
-
-; Launch application after install
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
@@ -97,5 +79,4 @@ FinishedHeadingLabel=Setup Completed Successfully!
 FinishedLabel=[name] has been installed on your computer.%n%nThe application runs in the system tray (notification area near the clock).%n%nGetting started:%n- Launch from desktop shortcut or Start Menu%n- Right-click the tray icon to open the web interface%n- Access from browser: http://localhost:5016%n- Right-click tray icon to change port if needed%n%nFor ASIO routing, configure your ASIO device in Settings.%nFor NDI Bridge, configure Host/Join/Local modes in Settings.
 
 [Registry]
-; Add application to Windows Firewall allowed apps
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules"; ValueType: string; ValueName: "NDI Intercom16"; ValueData: "v2.26|Action=Allow|Active=TRUE|Dir=In|Protocol=6|LPort=5016|App={app}\{#MyAppExeName}|Name=NDI Intercom16|"; Flags: uninsdeletevalue

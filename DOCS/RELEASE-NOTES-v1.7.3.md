@@ -57,7 +57,7 @@ Versioning:
 
 - All three csproj at `<Version>1.7.3</Version>` (+ matching AssemblyVersion / FileVersion / InformationalVersion).
 - `Models/IntercomProductOptions.cs` — `NdiProductVersion = "1.7.3"`.
-- `installer-script-v1.5.iss`, `installer-script-intercom2.iss` — version strings updated.
+- `installer-script-intercom16.iss`, `installer-script-intercom2.iss` — version strings updated.
 
 ## Upgrade checklist
 
