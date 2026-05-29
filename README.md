@@ -20,9 +20,11 @@ The **Stream Deck** plugin in this repo targets 16-channel workflows; the Interc
 
 - **NDI**: send/receive audio, discovery, optional NDI Bridge controls in Settings (see [NDI-BRIDGE-INTEGRATION.md](DOCS/NDI-BRIDGE-INTEGRATION.md))
 - **Identity-aware NDI routing (v1.7+)**: every sender / receiver is tagged with `(application_id, device_id)` plus `<ndi_manager>` connection metadata and a `<ndi_capabilities web_control>` link, so a management application can aggregate the 16+16 endpoints of an instance, distinguish multiple Intercoms on the network, and deep-link to the per-instance Web UI. Receivers are persistent and can be controlled remotely via the Discovery Server. Full spec: [DOCS/IDENTITY-AWARE-ROUTING.md](DOCS/IDENTITY-AWARE-ROUTING.md).
-- **Stereo NDI receive fix (v1.7.2)**: incoming stereo NDI flows (FLTP planar, the NDI v3 default) are decoded correctly. Previous releases produced an octave-high, metallic playback on stereo flows; mono was unaffected. See [DOCS/RELEASE-NOTES-v1.7.2.md](DOCS/RELEASE-NOTES-v1.7.2.md).
-- **NDI source name suffix mode (v1.7.1)**: `Full` / `Compact` / `Off` selectable from the Web UI to fix legacy / embedded NDI receivers that fail to subscribe to flows whose name contains the v1.7.0 identity suffix. Default is `Compact` (`Channel 1 (Intercom_A)`). The `<ndi_manager>` connection metadata is unchanged in every mode, so management apps that read metadata are unaffected. Upgrade notes: [DOCS/RELEASE-NOTES-v1.7.1.md](DOCS/RELEASE-NOTES-v1.7.1.md).
-- **24/7 stability hardening (v1.7)**: NDI native-handle race fixes, watchdog auto-restart of WASAPI/ASIO/PulseAudio devices, atomic config save, persistent rolling log file, `/healthz` endpoint. See [DOCS/RELEASE-NOTES-v1.7.0.md](DOCS/RELEASE-NOTES-v1.7.0.md).
+- **Stereo NDI receive fix (v1.7.2)**: incoming stereo NDI flows (FLTP planar) are decoded correctly.
+- **NDI source name suffix mode (v1.7.1)**: `Full` / `Compact` / `Off` in Settings for legacy receiver compatibility. Default `Compact`.
+- **24/7 stability + identity routing (v1.7.0)**: watchdog, atomic config, `/healthz`, `(application_id, device_id)` tagging.
+
+See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 - **ASIO** (Windows): hardware I/O, N-1 group mixing, low-allocation audio path
 - **Web UI**: channel control, VU meters, presets, REST API
 - **Two entry points**: `Program.cs` (16ch) and `Program.Light.cs` (2ch) via `IntercomAppHost`
@@ -120,7 +122,7 @@ After install, use the **system tray** icon (hidden icons area) to open the web 
 - `GET/POST /api/presets/*`
 
 Details: [API_REST_GUIDE.md](DOCS/API_REST_GUIDE.md), [INTERCOM USER_MANUAL.md](DOCS/INTERCOM%20USER_MANUAL.md).  
-Full doc index: [DOCS/README.md](DOCS/README.md).
+Documentation index: [DOCS/README.md](DOCS/README.md). Release history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Architecture & project layout
 
@@ -141,6 +143,8 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 ├── NDI Intercom2.csproj
 ├── NDI-Intercom.sln
 ├── Directory.Build.props    # Per-product output dirs + safe DefaultItemExcludes
+├── CHANGELOG.md
+├── CONTRIBUTING.md
 ├── installer-script-intercom16.iss
 ├── installer-script-intercom2.iss
 ├── build-intercom16-installer.cmd
@@ -152,3 +156,5 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 MIT License — Copyright (c) 2026 Vizrt NDI AB. See [LICENSE](LICENSE).
 
 Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
+
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).

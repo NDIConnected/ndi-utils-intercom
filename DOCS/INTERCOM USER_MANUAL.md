@@ -1277,54 +1277,9 @@ Web Interface:
 
 ### Version History
 
-**v1.7.3** (May 2026)
-- Settings page layout fix (CSS multi-column layout)
+See [CHANGELOG.md](../CHANGELOG.md) for v1.7.x release notes.
 
-**v1.7.2** (May 2026)
-- Correct decoding of incoming NDI stereo audio (FLTP planar)
-
-**v1.7.1** (May 2026)
-- Selectable NDI source name suffix mode (Full / Compact / Off)
-
-**v1.7.0** (May 2026)
-- 24/7 stability hardening, identity-aware NDI routing, `/healthz` endpoint
-
-**v1.5.0** (February 2026)
-- **Unified Intercom Groups**: NDI and ASIO channels can now participate in the same group
-  - Cross-mode N-1 mixing: NDI and ASIO users hear each other seamlessly
-  - Ring-buffered audio pipeline for glitch-free cross-mode streaming
-  - Single "Intercom Group" setting per channel (replaces separate NDI/ASIO group fields)
-- **NDI Bridge Service Integration**: Control NDI Bridge directly from Settings
-  - Host, Join, and Local mode configuration
-  - Encoder/decoder settings (HX quality, compression, GPU selection, encryption)
-  - Real-time Bridge status monitoring
-- **Codebase Cleanup**: Deep audit and refactoring for stability and maintainability
-
-**v1.4.0** (January 2026)
-- **Desktop Application**: Converted from Windows Service to desktop application
-  - System tray icon with right-click menu
-  - Configure web server port from tray menu
-  - Quick access link to web interface
-- **ASIO Hot-Start**: ASIO devices can be initialized after application startup
-- **Improved Error Reporting**: Detailed ASIO error messages displayed in the UI
-
-**v1.3.0** (December 2025)
-- **NDI Bridge Service**: Initial integration with NDI Bridge API
-  - Host/Join/Local mode control from Settings page
-  - Bridge connection status display
-
-**v1.2.0** (November 2025)
-- **ASIO Support**: Professional audio routing with ASIO-compatible devices
-  - 16 input and 16 output channels for ASIO devices
-  - N-1 routing for ASIO intercom groups
-  - Dedicated ASIO audio engine with lock-free processing
-- **Adaptive Audio Buffers**: 300ms NDI / 400ms ASIO ring buffers for stability
-
-**v1.0.0** (January 2025)
-- **Initial Release**: 16-channel NDI intercom system
-  - Full duplex communication, 4 intercom groups, N-1 mixing
-  - Web-based control interface on port 5016
-  - Stream Deck plugin for hardware control
+Earlier milestones (ASIO support, NDI Bridge, desktop/tray app, unified intercom groups) are described in the relevant sections of this manual.
 
 ---
 
