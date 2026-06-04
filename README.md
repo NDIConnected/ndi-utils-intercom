@@ -108,7 +108,7 @@ After install, use the **system tray** icon (hidden icons area) to open the web 
 
 ### Network exposure
 
-The embedded Kestrel server defaults to **localhost only**. To allow other PCs on the same network, use the tray menu **Web Server Settings…** and enable *Allow control from other computers on this network*, or set `WebServer:BindLocalhostOnly` to `false` and `AllowedHosts` to `"*"` in `appsettings.json`. There is no authentication — restrict access with firewall rules or VPN on untrusted networks. See [SECURITY.md](SECURITY.md).
+The embedded Kestrel server defaults to **localhost only** for remote clients. **Localhost on this PC is always available** (`http://127.0.0.1:{port}`). To allow other PCs on the network, use the tray menu **Web Server Settings…** and choose a **selected network interface** (recommended on multi-NIC machines) or all interfaces (advanced). Alternatively set `WebServer:RemoteAccess` to `Interface` or `All` in `appsettings.json`. There is no authentication — restrict access with firewall rules or VPN on untrusted networks. See [SECURITY.md](SECURITY.md).
 
 ## Configuration
 

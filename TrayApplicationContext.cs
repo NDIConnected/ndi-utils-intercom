@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using NDIIntercom.Models;
@@ -13,11 +11,9 @@ namespace NDIIntercom;
 /// </summary>
 public class TrayApplicationContext : ApplicationContext
 {
-    private const string AllowedHostsLocalOnly = "localhost;127.0.0.1;[::1]";
-
     private readonly NotifyIcon _notifyIcon;
     private readonly int _port;
-    private readonly bool _bindLocalhostOnly;
+    private readonly WebServerBindingOptions _binding;
     private readonly WebApplication _webApp;
     private readonly string _appSettingsPath;
 
@@ -26,7 +22,7 @@ public class TrayApplicationContext : ApplicationContext
         _webApp = webApp;
         _port = port;
         _appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-        _bindLocalhostOnly = LoadWebServerSettings().bindLocalhostOnly;
+        _binding = WebServerBindingOptions.FromAppsettingsFile(_appSettingsPath, port);
 
         var contextMenu = new ContextMenuStrip();
 
@@ -51,17 +47,24 @@ public class TrayApplicationContext : ApplicationContext
         {
             Icon = trayIcon,
             ContextMenuStrip = contextMenu,
-            Text = BuildTrayTooltip(_port, _bindLocalhostOnly),
+            Text = BuildTrayTooltip(_port, _binding),
             Visible = true
         };
 
         _notifyIcon.DoubleClick += OnOpenWebInterface;
     }
 
-    private static string BuildTrayTooltip(int port, bool bindLocalhostOnly)
+    private static string BuildTrayTooltip(int port, WebServerBindingOptions binding)
     {
         string baseText = $"{IntercomRuntime.Product.ProductDisplayName} - http://localhost:{port}";
-        return bindLocalhostOnly ? baseText : $"{baseText} (LAN access enabled)";
+        return binding.RemoteAccess switch
+        {
+            WebServerRemoteAccess.Interface =>
+                $"{baseText} (remote on {binding.BindAddress})",
+            WebServerRemoteAccess.All =>
+                $"{baseText} (remote on all interfaces)",
+            _ => baseText
+        };
     }
 
     private Icon LoadTrayIcon()
@@ -102,7 +105,7 @@ public class TrayApplicationContext : ApplicationContext
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = $"http://localhost:{_port}",
+                FileName = $"http://127.0.0.1:{_port}",
                 UseShellExecute = true
             });
         }
@@ -118,8 +121,8 @@ public class TrayApplicationContext : ApplicationContext
 
     private void OnConfigureWebServer(object? sender, EventArgs e)
     {
-        var (_, bindLocalhostOnly) = LoadWebServerSettings();
-        bool allowRemote = !bindLocalhostOnly;
+        var current = WebServerBindingOptions.FromAppsettingsFile(_appSettingsPath, _port);
+        var interfaces = WebServerBindingOptions.ListNetworkInterfaces();
 
         using var dialog = new Form
         {
@@ -128,8 +131,8 @@ public class TrayApplicationContext : ApplicationContext
             StartPosition = FormStartPosition.CenterScreen,
             MaximizeBox = false,
             MinimizeBox = false,
-            Width = 420,
-            Height = 300,
+            Width = 460,
+            Height = 390,
             ShowInTaskbar = false
         };
 
@@ -137,54 +140,95 @@ public class TrayApplicationContext : ApplicationContext
         {
             Text = "Web server port:",
             Left = 20,
-            Top = 20,
-            Width = 360
+            Top = 16,
+            Width = 400
         };
 
         var portTextBox = new TextBox
         {
             Text = _port.ToString(),
             Left = 20,
-            Top = 42,
-            Width = 360
+            Top = 38,
+            Width = 400
         };
 
-        var remoteCheckBox = new CheckBox
+        var remoteLabel = new Label
         {
-            Text = "Allow control from other computers on this network",
+            Text = "Remote control (localhost is always available on this PC):",
             Left = 20,
-            Top = 78,
-            Width = 360,
-            Checked = allowRemote
+            Top = 72,
+            Width = 400
+        };
+
+        var remoteOffRadio = new RadioButton
+        {
+            Text = "Disabled",
+            Left = 20,
+            Top = 98,
+            Width = 400,
+            Checked = current.RemoteAccess == WebServerRemoteAccess.Off
+        };
+
+        var remoteInterfaceRadio = new RadioButton
+        {
+            Text = "Enabled on selected network interface:",
+            Left = 20,
+            Top = 124,
+            Width = 400,
+            Checked = current.RemoteAccess == WebServerRemoteAccess.Interface,
+            Enabled = interfaces.Count > 0
+        };
+
+        var interfaceCombo = new ComboBox
+        {
+            Left = 38,
+            Top = 148,
+            Width = 382,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DisplayMember = nameof(NetworkInterfaceOption.DisplayName),
+            Enabled = interfaces.Count > 0
+        };
+        foreach (var nic in interfaces)
+        {
+            interfaceCombo.Items.Add(nic);
+        }
+
+        SelectInterfaceCombo(interfaceCombo, current.BindAddress, interfaces);
+
+        var remoteAllRadio = new RadioButton
+        {
+            Text = "Enabled on all network interfaces (advanced)",
+            Left = 20,
+            Top = 182,
+            Width = 400,
+            Checked = current.RemoteAccess == WebServerRemoteAccess.All
         };
 
         var warningLabel = new Label
         {
-            Text = "No authentication: anyone on the LAN who can reach this port can control the intercom. Ensure Windows Firewall allows inbound TCP on the port.",
+            Text = "No authentication. Remote clients on the chosen network can control the intercom. Allow inbound TCP on the port in Windows Firewall.",
             Left = 38,
-            Top = 102,
-            Width = 342,
+            Top = 210,
+            Width = 382,
             Height = 48,
-            ForeColor = System.Drawing.Color.DimGray,
-            Visible = allowRemote
+            ForeColor = System.Drawing.Color.DimGray
         };
 
-        var lanLabel = new Label
+        var remoteUrlLabel = new Label
         {
-            Text = BuildLanUrlsLabel(_port),
             Left = 38,
-            Top = 152,
-            Width = 342,
-            Height = 40,
-            Visible = allowRemote
+            Top = 262,
+            Width = 382,
+            Height = 36,
+            ForeColor = System.Drawing.Color.DimGray
         };
 
         var okButton = new Button
         {
             Text = "Save",
             DialogResult = DialogResult.OK,
-            Left = 220,
-            Top = 210,
+            Left = 250,
+            Top = 310,
             Width = 80
         };
 
@@ -192,32 +236,40 @@ public class TrayApplicationContext : ApplicationContext
         {
             Text = "Cancel",
             DialogResult = DialogResult.Cancel,
-            Left = 310,
-            Top = 210,
+            Left = 340,
+            Top = 310,
             Width = 80
         };
 
-        remoteCheckBox.CheckedChanged += (_, _) =>
+        void UpdateRemoteUi()
         {
-            warningLabel.Visible = remoteCheckBox.Checked;
-            lanLabel.Visible = remoteCheckBox.Checked;
-            if (remoteCheckBox.Checked && int.TryParse(portTextBox.Text.Trim(), out int p))
+            bool remoteEnabled = remoteInterfaceRadio.Checked || remoteAllRadio.Checked;
+            interfaceCombo.Enabled = remoteInterfaceRadio.Checked && interfaces.Count > 0;
+            warningLabel.Visible = remoteEnabled;
+            remoteUrlLabel.Visible = remoteEnabled;
+            if (int.TryParse(portTextBox.Text.Trim(), out int previewPort))
             {
-                lanLabel.Text = BuildLanUrlsLabel(p);
+                remoteUrlLabel.Text = BuildRemoteUrlPreview(
+                    previewPort,
+                    remoteOffRadio.Checked ? WebServerRemoteAccess.Off
+                        : remoteInterfaceRadio.Checked ? WebServerRemoteAccess.Interface
+                        : WebServerRemoteAccess.All,
+                    interfaceCombo.SelectedItem as NetworkInterfaceOption);
             }
-        };
+        }
 
-        portTextBox.TextChanged += (_, _) =>
-        {
-            if (remoteCheckBox.Checked && int.TryParse(portTextBox.Text.Trim(), out int p))
-            {
-                lanLabel.Text = BuildLanUrlsLabel(p);
-            }
-        };
+        remoteOffRadio.CheckedChanged += (_, _) => UpdateRemoteUi();
+        remoteInterfaceRadio.CheckedChanged += (_, _) => UpdateRemoteUi();
+        remoteAllRadio.CheckedChanged += (_, _) => UpdateRemoteUi();
+        portTextBox.TextChanged += (_, _) => UpdateRemoteUi();
+        interfaceCombo.SelectedIndexChanged += (_, _) => UpdateRemoteUi();
+        UpdateRemoteUi();
 
         dialog.Controls.AddRange(new Control[]
         {
-            portLabel, portTextBox, remoteCheckBox, warningLabel, lanLabel, okButton, cancelButton
+            portLabel, portTextBox, remoteLabel,
+            remoteOffRadio, remoteInterfaceRadio, interfaceCombo, remoteAllRadio,
+            warningLabel, remoteUrlLabel, okButton, cancelButton
         });
         dialog.AcceptButton = okButton;
         dialog.CancelButton = cancelButton;
@@ -237,23 +289,54 @@ public class TrayApplicationContext : ApplicationContext
             return;
         }
 
-        bool newAllowRemote = remoteCheckBox.Checked;
-        if (newPort == _port && newAllowRemote == allowRemote)
+        WebServerRemoteAccess newRemoteAccess = remoteOffRadio.Checked
+            ? WebServerRemoteAccess.Off
+            : remoteInterfaceRadio.Checked
+                ? WebServerRemoteAccess.Interface
+                : WebServerRemoteAccess.All;
+
+        string? bindAddress = null;
+        if (newRemoteAccess == WebServerRemoteAccess.Interface)
+        {
+            if (interfaceCombo.SelectedItem is not NetworkInterfaceOption selected)
+            {
+                MessageBox.Show(
+                    "Select a network interface for remote control.",
+                    IntercomRuntime.Product.ProductDisplayName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            bindAddress = selected.Address;
+        }
+
+        var newBinding = new WebServerBindingOptions
+        {
+            Port = newPort,
+            RemoteAccess = newRemoteAccess,
+            BindAddress = bindAddress
+        };
+
+        if (newPort == current.Port
+            && newBinding.RemoteAccess == current.RemoteAccess
+            && string.Equals(newBinding.BindAddress, current.BindAddress, StringComparison.Ordinal))
         {
             return;
         }
 
         try
         {
-            SaveWebServerSettings(newPort, newAllowRemote);
+            SaveWebServerSettings(newBinding);
 
             string message = $"Web server settings saved.\n\nPlease restart {IntercomRuntime.Product.ProductDisplayName} for the changes to take effect.";
-            if (newAllowRemote)
+            message += "\n\nLocal access: http://127.0.0.1:" + newPort;
+            if (newRemoteAccess != WebServerRemoteAccess.Off)
             {
-                string lanUrls = FormatLanUrlsForMessage(newPort);
-                if (!string.IsNullOrEmpty(lanUrls))
+                string remotePreview = BuildRemoteUrlPreview(newPort, newRemoteAccess, interfaceCombo.SelectedItem as NetworkInterfaceOption);
+                if (!string.IsNullOrWhiteSpace(remotePreview))
                 {
-                    message += $"\n\nOther computers can use:\n{lanUrls}";
+                    message += "\n\nRemote access:\n" + remotePreview;
                 }
                 message += "\n\nEnsure Windows Firewall allows inbound TCP on this port.";
             }
@@ -274,79 +357,48 @@ public class TrayApplicationContext : ApplicationContext
         }
     }
 
-    private static string BuildLanUrlsLabel(int port)
+    private static void SelectInterfaceCombo(
+        ComboBox combo,
+        string? bindAddress,
+        IReadOnlyList<NetworkInterfaceOption> interfaces)
     {
-        var urls = GetLocalLanUrls(port);
-        if (urls.Count == 0)
+        if (interfaces.Count == 0)
         {
-            return "LAN URL: use this PC's IP address with the port above.";
+            return;
         }
 
-        return "LAN URL(s):\n" + string.Join("\n", urls);
-    }
-
-    private static string FormatLanUrlsForMessage(int port) =>
-        string.Join("\n", GetLocalLanUrls(port));
-
-    private static List<string> GetLocalLanUrls(int port)
-    {
-        var urls = new List<string>();
-        try
+        if (!string.IsNullOrWhiteSpace(bindAddress))
         {
-            foreach (var address in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
+            for (int i = 0; i < combo.Items.Count; i++)
             {
-                if (address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address))
+                if (combo.Items[i] is NetworkInterfaceOption option
+                    && option.Address == bindAddress)
                 {
-                    urls.Add($"http://{address}:{port}");
+                    combo.SelectedIndex = i;
+                    return;
                 }
             }
         }
-        catch
-        {
-            // Best-effort hint only
-        }
 
-        return urls;
+        combo.SelectedIndex = 0;
     }
 
-    private (int port, bool bindLocalhostOnly) LoadWebServerSettings()
+    private static string BuildRemoteUrlPreview(
+        int port,
+        WebServerRemoteAccess remoteAccess,
+        NetworkInterfaceOption? selectedInterface)
     {
-        int port = _port;
-        bool bindLocalhostOnly = true;
-
-        if (!File.Exists(_appSettingsPath))
+        return remoteAccess switch
         {
-            return (port, bindLocalhostOnly);
-        }
-
-        try
-        {
-            string json = File.ReadAllText(_appSettingsPath);
-            var root = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
-            if (root is not JsonObject obj || obj["WebServer"] is not JsonObject webServer)
-            {
-                return (port, bindLocalhostOnly);
-            }
-
-            if (webServer["Port"] is JsonValue portValue && portValue.TryGetValue(out int savedPort))
-            {
-                port = savedPort;
-            }
-
-            if (webServer["BindLocalhostOnly"] is JsonValue bindValue && bindValue.TryGetValue(out bool savedBind))
-            {
-                bindLocalhostOnly = savedBind;
-            }
-        }
-        catch
-        {
-            // Use defaults from constructor state
-        }
-
-        return (port, bindLocalhostOnly);
+            WebServerRemoteAccess.Interface when selectedInterface != null =>
+                $"http://{selectedInterface.Address}:{port}",
+            WebServerRemoteAccess.All =>
+                "All IPv4 addresses on this PC (use the IP of the shared network)",
+            _ => string.Empty
+        };
     }
 
-    private void SaveWebServerSettings(int port, bool allowRemoteAccess)
+    private void SaveWebServerSettings(WebServerBindingOptions binding)
     {
         JsonNode? root;
 
@@ -371,9 +423,7 @@ public class TrayApplicationContext : ApplicationContext
             obj["WebServer"] = webServer;
         }
 
-        webServer["Port"] = port;
-        webServer["BindLocalhostOnly"] = !allowRemoteAccess;
-        obj["AllowedHosts"] = allowRemoteAccess ? "*" : AllowedHostsLocalOnly;
+        binding.WriteTo(webServer, obj);
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(_appSettingsPath, root.ToJsonString(options));

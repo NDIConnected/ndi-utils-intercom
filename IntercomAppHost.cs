@@ -35,9 +35,10 @@ public static class IntercomAppHost
             .AddJsonFile("appsettings.json", optional: true)
             .Build();
 
-        int port = configForPort.GetValue<int?>("WebServer:Port") ?? IntercomRuntime.Product.DefaultWebPort;
-        bool bindLocalhostOnly = configForPort.GetValue<bool?>("WebServer:BindLocalhostOnly") ?? true;
-        string? bindAddress = configForPort.GetValue<string>("WebServer:BindAddress");
+        var webBinding = WebServerBindingOptions.FromConfiguration(
+            configForPort,
+            IntercomRuntime.Product.DefaultWebPort);
+        int port = webBinding.Port;
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -91,30 +92,29 @@ public static class IntercomAppHost
                         return false;
                     }
 
-                    return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                    if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
                         || uri.Host == "127.0.0.1"
-                        || uri.Host == "[::1]";
+                        || uri.Host == "[::1]")
+                    {
+                        return true;
+                    }
+
+                    if (webBinding.RemoteAccess == WebServerRemoteAccess.Interface
+                        && !string.IsNullOrWhiteSpace(webBinding.BindAddress)
+                        && uri.Host == webBinding.BindAddress)
+                    {
+                        return true;
+                    }
+
+                    return webBinding.RemoteAccess == WebServerRemoteAccess.All
+                        && IsPrivateOrLocalOriginHost(uri.Host);
                 })
                 .AllowAnyMethod()
                 .AllowAnyHeader();
             });
         });
 
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            if (bindLocalhostOnly)
-            {
-                options.ListenLocalhost(port);
-            }
-            else if (string.IsNullOrWhiteSpace(bindAddress) || bindAddress == "0.0.0.0" || bindAddress == "*")
-            {
-                options.ListenAnyIP(port);
-            }
-            else
-            {
-                options.Listen(IPAddress.Parse(bindAddress), port);
-            }
-        });
+        builder.WebHost.ConfigureKestrel(options => webBinding.ConfigureKestrel(options));
 
         var app = builder.Build();
 
@@ -133,17 +133,25 @@ public static class IntercomAppHost
         var intercomEngine = app.Services.GetRequiredService<IntercomEngine>();
 
         var startupLogger = loggerFactory.CreateLogger("NDIIntercom.Startup");
-        if (bindLocalhostOnly)
+        switch (webBinding.RemoteAccess)
         {
-            startupLogger.LogInformation(
-                "Web UI listening on http://127.0.0.1:{Port} (localhost only). Enable LAN access from the tray: Web Server Settings → Allow control from other computers on this network.",
-                port);
-        }
-        else
-        {
-            startupLogger.LogWarning(
-                "Web UI listening on all interfaces (port {Port}). The control API has no authentication; restrict network access or bind to localhost.",
-                port);
+            case WebServerRemoteAccess.Off:
+                startupLogger.LogInformation(
+                    "Web UI on http://127.0.0.1:{Port} (localhost). Enable remote control from tray: Web Server Settings.",
+                    port);
+                break;
+            case WebServerRemoteAccess.Interface:
+                startupLogger.LogWarning(
+                    "Web UI on http://127.0.0.1:{Port} and http://{BindAddress}:{Port} (selected interface). No authentication — restrict network access.",
+                    port,
+                    webBinding.BindAddress,
+                    port);
+                break;
+            case WebServerRemoteAccess.All:
+                startupLogger.LogWarning(
+                    "Web UI on http://127.0.0.1:{Port} and all network interfaces. No authentication — restrict network access.",
+                    port);
+                break;
         }
 
         _ = Task.Run(() =>
@@ -231,5 +239,27 @@ public static class IntercomAppHost
                 "NDI",
                 IntercomRuntime.Product.DataFolderName);
         return System.IO.Path.Combine(baseDir, "logs");
+    }
+
+    private static bool IsPrivateOrLocalOriginHost(string host)
+    {
+        if (!IPAddress.TryParse(host, out IPAddress? address))
+        {
+            return false;
+        }
+
+        if (IPAddress.IsLoopback(address))
+        {
+            return true;
+        }
+
+        byte[] bytes = address.GetAddressBytes();
+        return bytes[0] switch
+        {
+            10 => true,
+            172 when bytes[1] >= 16 && bytes[1] <= 31 => true,
+            192 when bytes[1] == 168 => true,
+            _ => false
+        };
     }
 }

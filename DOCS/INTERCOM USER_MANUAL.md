@@ -1150,7 +1150,7 @@ A: Manually copy/restore `config.json` files with different names.
 ### Advanced
 
 **Q: Can I change the web port (5016)?**
-A: Yes. Right-click the system tray icon, choose **Web Server Settings…**, set the port and optionally enable *Allow control from other computers on this network*, then click **Save** and restart the application. Settings are saved in `appsettings.json`.
+A: Yes. Right-click the system tray icon, choose **Web Server Settings…**, set the port and choose remote control: disabled, a **selected network interface**, or all interfaces (advanced). Local access via `http://127.0.0.1:{port}` remains available on the server PC. Click **Save** and restart. Settings are saved in `appsettings.json`.
 
 **Q: Can I customize the web interface?**
 A: Yes, modify files in `wwwroot/` (HTML, CSS, JavaScript).

@@ -30,7 +30,7 @@ http://192.168.1.100:5016/api/intercom
 
 **No authentication** — the control API is open to any client that can reach the web server.
 
-**Default:** the embedded server binds to **localhost only** (`WebServer:BindLocalhostOnly` in `appsettings.json`). On Windows, enable LAN access from the tray: **Web Server Settings…** → *Allow control from other computers on this network* (restart required). Alternatively set `BindLocalhostOnly` to `false` and `AllowedHosts` to `"*"`. Protect the port with firewall rules or VPN. See [SECURITY.md](../SECURITY.md).
+**Default:** remote control is **off**; only this PC can reach the web UI over the network (`WebServer:RemoteAccess`: `Off`). **Localhost remains available on the server machine** (`http://127.0.0.1:5016`). On Windows, enable remote access from the tray: **Web Server Settings…** → select a network interface (recommended) or all interfaces. See [SECURITY.md](../SECURITY.md).
 
 ---
 
