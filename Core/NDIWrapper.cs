@@ -25,7 +25,9 @@ namespace NDIIntercom.Core
         {
             public IntPtr p_ndi_name;
             public IntPtr p_groups;
+            [MarshalAs(UnmanagedType.I1)]
             public bool clock_video;
+            [MarshalAs(UnmanagedType.I1)]
             public bool clock_audio;
         }
 
@@ -35,6 +37,7 @@ namespace NDIIntercom.Core
             public NDIlib_source_t source_to_connect_to;
             public int color_format;
             public int bandwidth;
+            [MarshalAs(UnmanagedType.I1)]
             public bool allow_video_fields;
             public IntPtr p_ndi_recv_name;
         }
@@ -73,6 +76,7 @@ namespace NDIIntercom.Core
         [StructLayout(LayoutKind.Sequential)]
         public struct NDIlib_find_create_t
         {
+            [MarshalAs(UnmanagedType.I1)]
             public bool show_local_sources;
             public IntPtr p_groups;
             public IntPtr p_extra_ips;
@@ -89,7 +93,9 @@ namespace NDIIntercom.Core
         [StructLayout(LayoutKind.Sequential)]
         public struct NDIlib_tally_t
         {
+            [MarshalAs(UnmanagedType.I1)]
             public bool on_program;      // Is this source on program output?
+            [MarshalAs(UnmanagedType.I1)]
             public bool on_preview;      // Is this source on preview output?
         }
 

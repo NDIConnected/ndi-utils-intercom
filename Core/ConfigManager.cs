@@ -21,6 +21,8 @@ namespace NDIIntercom.Core
 
         private static string ConfigFilePath => Path.Combine(ConfigDirectory, "config.json");
 
+        private static string ExportsDirectory => Path.Combine(ConfigDirectory, "Exports");
+
         private static string[] LegacyConfigDirectories => new[]
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), IntercomRuntime.Product.DataFolderName)
@@ -130,47 +132,30 @@ namespace NDIIntercom.Core
 
         public static void ExportConfig(AppConfig config, string filePath)
         {
-            try
-            {
-                string directory = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                string json = JsonSerializer.Serialize(config, JsonOptions);
-                File.WriteAllText(filePath, json);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            string resolvedPath = SafePath.ResolveUnderDirectory(ExportsDirectory, filePath);
+            string json = JsonSerializer.Serialize(config, JsonOptions);
+            File.WriteAllText(resolvedPath, json);
         }
 
         public static AppConfig ImportConfig(string filePath)
         {
-            try
+            string resolvedPath = SafePath.ResolveUnderDirectory(ExportsDirectory, filePath);
+
+            if (!File.Exists(resolvedPath))
             {
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException($"Configuration file not found: {filePath}");
-                }
-
-                string json = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
-
-                if (config == null)
-                {
-                    throw new InvalidOperationException("Failed to deserialize configuration");
-                }
-
-                config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
-                return config;
+                throw new FileNotFoundException($"Configuration file not found: {Path.GetFileName(filePath)}");
             }
-            catch (Exception)
+
+            string json = File.ReadAllText(resolvedPath);
+            var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+
+            if (config == null)
             {
-                throw;
+                throw new InvalidOperationException("Failed to deserialize configuration");
             }
+
+            config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
+            return config;
         }
 
         private static void EnsureMigrated()
@@ -196,9 +181,9 @@ namespace NDIIntercom.Core
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                _logger.LogWarning(ex, "ConfigManager.EnsureMigrated failed");
             }
         }
     }

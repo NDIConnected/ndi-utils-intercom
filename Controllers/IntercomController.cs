@@ -268,11 +268,13 @@ namespace NDIIntercom.Controllers
 
     public class ExportConfigRequest
     {
+        /// <summary>File name only (stored under the per-product Exports folder).</summary>
         public string FilePath { get; set; }
     }
 
     public class ImportConfigRequest
     {
+        /// <summary>File name only (read from the per-product Exports folder).</summary>
         public string FilePath { get; set; }
     }
 

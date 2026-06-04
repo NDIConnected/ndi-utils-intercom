@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NDIIntercom.Core;
+using NDIIntercom.Models;
 
 namespace NDIIntercom.Controllers
 {
@@ -8,6 +9,8 @@ namespace NDIIntercom.Controllers
     public class SystemController : ControllerBase
     {
         private readonly IntercomEngine _intercomEngine;
+        private static readonly string AppVersion =
+            typeof(SystemController).Assembly.GetName().Version?.ToString() ?? "unknown";
 
         public SystemController(IntercomEngine intercomEngine)
         {
@@ -25,7 +28,7 @@ namespace NDIIntercom.Controllers
                 running = isRunning,
                 isRunning = isRunning,
                 timestamp = DateTime.UtcNow,
-                version = "1.4.0"
+                version = AppVersion
             });
         }
 
@@ -35,8 +38,8 @@ namespace NDIIntercom.Controllers
         {
             return Ok(new
             {
-                version = "1.4.0",
-                name = "NDI Intercom16",
+                version = AppVersion,
+                name = IntercomRuntime.Product.ProductDisplayName,
                 channels = _intercomEngine.GetChannels().Count,
                 running = _intercomEngine.IsRunning
             });

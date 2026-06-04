@@ -39,7 +39,7 @@ namespace NDIIntercom.Core
                 IntPtr urlPtr = NDIWrapper.NDIlib_send_listener_get_server_url(_listenerInstance);
                 if (urlPtr == IntPtr.Zero)
                     return null;
-                return Marshal.PtrToStringAnsi(urlPtr);
+                return NdiNativeStrings.PtrToStringUtf8(urlPtr);
             }
         }
 
@@ -102,7 +102,7 @@ namespace NDIIntercom.Core
                     IntPtr currentPtr = IntPtr.Add(sendersPtr, i * structSize);
                     var sender = Marshal.PtrToStructure<NDIWrapper.sender_t>(currentPtr);
 
-                    string uuid = sender.p_uuid != IntPtr.Zero ? Marshal.PtrToStringAnsi(sender.p_uuid) ?? "" : "";
+                    string uuid = sender.p_uuid != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(sender.p_uuid) ?? "" : "";
                     if (!string.IsNullOrEmpty(uuid))
                         seenUuids.Add(uuid);
 
@@ -123,9 +123,9 @@ namespace NDIIntercom.Core
                     var senderInfo = new Models.NDISenderStreamInfo
                     {
                         Uuid = uuid,
-                        Name = sender.p_name != IntPtr.Zero ? Marshal.PtrToStringAnsi(sender.p_name) ?? "" : "",
-                        Metadata = sender.p_metadata != IntPtr.Zero ? Marshal.PtrToStringAnsi(sender.p_metadata) ?? "" : "",
-                        Address = sender.p_address != IntPtr.Zero ? Marshal.PtrToStringAnsi(sender.p_address) ?? "" : "",
+                        Name = sender.p_name != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(sender.p_name) ?? "" : "",
+                        Metadata = sender.p_metadata != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(sender.p_metadata) ?? "" : "",
+                        Address = sender.p_address != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(sender.p_address) ?? "" : "",
                         Port = sender.port,
                         EventsSubscribed = sender.events_subscribed || _subscribedSenders.Contains(uuid),
                         Groups = new List<string>()
@@ -197,9 +197,9 @@ namespace NDIIntercom.Core
                         IntPtr currentPtr = IntPtr.Add(eventsPtr, i * structSize);
                         var evt = Marshal.PtrToStructure<NDIWrapper.listener_event>(currentPtr);
 
-                        string uuid = evt.p_uuid != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_uuid) ?? "" : "";
-                        string name = evt.p_name != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_name) ?? "" : "";
-                        string value = evt.p_value != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_value) ?? "" : "";
+                        string uuid = evt.p_uuid != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_uuid) ?? "" : "";
+                        string name = evt.p_name != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_name) ?? "" : "";
+                        string value = evt.p_value != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_value) ?? "" : "";
 
                         if (!string.IsNullOrEmpty(uuid) && !string.IsNullOrEmpty(name))
                         {

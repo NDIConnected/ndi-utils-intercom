@@ -30,8 +30,8 @@ namespace NDIIntercom.Core
         private WasapiCapture _capture;
         private WasapiOut _output;
         private BufferedWaveProvider _outputBuffer;
-        private MMDevice _selectedMicrophone;
-        private MMDevice _selectedSpeaker;
+        private MMDevice? _selectedMicrophone;
+        private MMDevice? _selectedSpeaker;
         private int _bufferSizeMs = BUFFER_SIZE_MS;
         private int _captureChannels = 2; // Track number of channels being captured (default stereo)
         private NoiseGate _noiseGate;

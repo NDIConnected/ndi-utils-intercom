@@ -421,7 +421,7 @@ namespace NDIIntercom.Core
 
                         if (source.p_ndi_name != IntPtr.Zero)
                         {
-                            string sourceName = Marshal.PtrToStringAnsi(source.p_ndi_name);
+                            string sourceName = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
                             if (!string.IsNullOrEmpty(sourceName))
                             {
                                 sources.Add(sourceName);
@@ -459,7 +459,7 @@ namespace NDIIntercom.Core
 
                         if (source.p_ndi_name != IntPtr.Zero)
                         {
-                            string name = Marshal.PtrToStringAnsi(source.p_ndi_name);
+                            string name = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
                             if (name == sourceName)
                             {
                                 return source;

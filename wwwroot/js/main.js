@@ -4,6 +4,15 @@ const connection = new signalR.HubConnectionBuilder()
     .withAutomaticReconnect()
     .build();
 
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 let channels = [];
 let maxIntercomChannels = 16;
 
@@ -52,7 +61,7 @@ function renderChannels() {
         card.className = "channel-card";
         card.innerHTML = `
             <div class="channel-header" onclick="editChannelLabel(${channel.channelNumber})">
-                ${channel.label || 'Channel ' + channel.channelNumber}
+                ${escapeHtml(channel.label || "Channel " + channel.channelNumber)}
             </div>
 
             <button class="btn-talk ${channel.talkEnabled ? 'active' : ''}"
@@ -434,15 +443,30 @@ async function loadPresetsList() {
         }
 
         presets.forEach(presetName => {
-            const presetItem = document.createElement('div');
-            presetItem.className = 'preset-item';
-            presetItem.innerHTML = `
-                <div class="preset-name">${presetName}</div>
-                <div class="preset-actions">
-                    <button class="preset-load-btn" onclick="loadPresetByName('${presetName}')">Load</button>
-                    <button class="preset-delete-btn" onclick="deletePresetByName('${presetName}')">Delete</button>
-                </div>
-            `;
+            const presetItem = document.createElement("div");
+            presetItem.className = "preset-item";
+
+            const nameEl = document.createElement("div");
+            nameEl.className = "preset-name";
+            nameEl.textContent = presetName;
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "preset-actions";
+
+            const loadBtn = document.createElement("button");
+            loadBtn.className = "preset-load-btn";
+            loadBtn.textContent = "Load";
+            loadBtn.addEventListener("click", () => loadPresetByName(presetName));
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "preset-delete-btn";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", () => deletePresetByName(presetName));
+
+            actionsEl.appendChild(loadBtn);
+            actionsEl.appendChild(deleteBtn);
+            presetItem.appendChild(nameEl);
+            presetItem.appendChild(actionsEl);
             presetsList.appendChild(presetItem);
         });
     } catch (err) {

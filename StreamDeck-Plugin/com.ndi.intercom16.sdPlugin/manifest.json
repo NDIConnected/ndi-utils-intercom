@@ -29,7 +29,7 @@
           "FontSize": "10"
         },
         {
-          "Image": "images/key-active",
+          "Image": "images/key",
           "TitleAlignment": "middle",
           "FontSize": "10"
         }
@@ -49,7 +49,7 @@
           "FontSize": "10"
         },
         {
-          "Image": "images/key-active",
+          "Image": "images/key",
           "TitleAlignment": "middle",
           "FontSize": "10"
         }

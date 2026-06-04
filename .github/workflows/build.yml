@@ -20,4 +20,7 @@ jobs:
         run: dotnet restore "NDI-Intercom.sln"
 
       - name: Build
+        # CI verifies compilation only. The NDI native DLL is not on the runner
+        # (Condition="Exists(...)" in .csproj), so artifacts from this workflow
+        # are not runnable without a local publish + NDI SDK install.
         run: dotnet build "NDI-Intercom.sln" -c Release --no-restore

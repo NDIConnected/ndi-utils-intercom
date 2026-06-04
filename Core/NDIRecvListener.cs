@@ -70,19 +70,19 @@ namespace NDIIntercom.Core
 
                         try
                         {
-                            uuid = receiver.p_uuid != IntPtr.Zero ? Marshal.PtrToStringAnsi(receiver.p_uuid) ?? "" : "";
+                            uuid = receiver.p_uuid != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(receiver.p_uuid) ?? "" : "";
                         }
                         catch { }
 
                         try
                         {
-                            name = receiver.p_name != IntPtr.Zero ? Marshal.PtrToStringAnsi(receiver.p_name) ?? "" : "";
+                            name = receiver.p_name != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(receiver.p_name) ?? "" : "";
                         }
                         catch { }
 
                         try
                         {
-                            inputUuid = receiver.p_input_uuid != IntPtr.Zero ? Marshal.PtrToStringAnsi(receiver.p_input_uuid) ?? "" : "";
+                            inputUuid = receiver.p_input_uuid != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(receiver.p_input_uuid) ?? "" : "";
                         }
                         catch { }
 
@@ -183,9 +183,9 @@ namespace NDIIntercom.Core
                     IntPtr currentPtr = IntPtr.Add(eventsPtr, i * structSize);
                     var evt = Marshal.PtrToStructure<NDIWrapper.listener_event>(currentPtr);
 
-                    string uuid = evt.p_uuid != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_uuid) ?? "" : "";
-                    string name = evt.p_name != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_name) ?? "" : "";
-                    string value = evt.p_value != IntPtr.Zero ? Marshal.PtrToStringAnsi(evt.p_value) ?? "" : "";
+                    string uuid = evt.p_uuid != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_uuid) ?? "" : "";
+                    string name = evt.p_name != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_name) ?? "" : "";
+                    string value = evt.p_value != IntPtr.Zero ? NdiNativeStrings.PtrToStringUtf8(evt.p_value) ?? "" : "";
 
                     eventList.Add(new NDIReceiverEvent
                     {

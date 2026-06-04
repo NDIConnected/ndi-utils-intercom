@@ -28,7 +28,9 @@ http://192.168.1.100:5016/api/intercom
 
 ## Authentication
 
-**No authentication required** - The API is accessible without credentials. If necessary, configure firewall/VPN to protect access.
+**No authentication** — the control API is open to any client that can reach the web server.
+
+**Default:** the embedded server binds to **localhost only** (`WebServer:BindLocalhostOnly` in `appsettings.json`). Remote access requires explicitly disabling that setting; if you do, protect the port with firewall rules or VPN. See [SECURITY.md](../SECURITY.md).
 
 ---
 

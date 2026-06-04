@@ -1,5 +1,7 @@
 # NDI Intercom16 & NDI Intercom2
 
+> **Sample / reference software.** NDI Intercom is an MIT-licensed community sample, **not officially supported** as a production product. The embedded control API has **no authentication**; the default configuration binds the web UI to **localhost only**. See [SECURITY.md](SECURITY.md) before exposing the service on a network.
+
 Professional NDI-based intercom for Windows: **16-channel** full product and **2-channel** compact build, sharing one codebase (NDI + optional ASIO).
 
 ## Products
@@ -102,7 +104,11 @@ dotnet publish "NDI Intercom2.csproj" -c Release -r win-x64 --self-contained tru
 - **Intercom16**: installs under `C:\Program Files\NDI\NDI Intercom16` (per installer script).
 - **Intercom2**: installs under `C:\Program Files\NDI\NDI Intercom2`.
 
-After install, use the **system tray** icon (hidden icons area) to open the web UI or change the HTTP port (writes `appsettings.json` next to the executable).
+After install, use the **system tray** icon (hidden icons area) to open the web UI or change the HTTP port (writes `appsettings.json` next to the executable). The web UI listens on **http://127.0.0.1:{port}** by default.
+
+### Network exposure
+
+The embedded Kestrel server defaults to **localhost only** (`WebServer:BindLocalhostOnly`: `true` in `appsettings.json`). To listen on all interfaces (not recommended without additional access controls), set `BindLocalhostOnly` to `false`. See [SECURITY.md](SECURITY.md).
 
 ## Configuration
 
@@ -116,10 +122,14 @@ After install, use the **system tray** icon (hidden icons area) to open the web 
 
 ## API endpoints
 
-- `GET /api/channels`, `POST /api/channels/{id}`, `GET /api/status`
-- `GET /api/ndi/sources`, `GET /api/ndi/senders`, `GET /api/ndi/receivers`
-- `GET /api/asio/drivers`
-- `GET/POST /api/presets/*`
+REST base path: `/api/intercom/…` — full reference in [API_REST_GUIDE.md](DOCS/API_REST_GUIDE.md).
+
+Common routes:
+
+- `GET /api/intercom/channels`, `GET /api/intercom/channels/{id}`, `POST /api/intercom/channels/{id}/talk`, `POST /api/intercom/channels/{id}/listen`
+- `GET /api/system/status`, `GET /healthz`
+- `GET /api/ndi/senders`, `GET /api/ndi/receivers` (Discovery Server)
+- `GET/POST /api/intercom/presets/*`, `POST /api/intercom/config/export`, `POST /api/intercom/config/import`
 
 Details: [API_REST_GUIDE.md](DOCS/API_REST_GUIDE.md), [INTERCOM USER_MANUAL.md](DOCS/INTERCOM%20USER_MANUAL.md).  
 Documentation index: [DOCS/README.md](DOCS/README.md). Release history: [CHANGELOG.md](CHANGELOG.md).
@@ -155,6 +165,6 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 
 MIT License — Copyright (c) 2026 Vizrt NDI AB. See [LICENSE](LICENSE).
 
-Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
+Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt). The NDI logo and NDI® trademark are **not** covered by MIT; see that file for redistribution and trademark notes.
 
-Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Security: [SECURITY.md](SECURITY.md).

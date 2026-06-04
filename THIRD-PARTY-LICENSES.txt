@@ -120,11 +120,71 @@ https://docs.ndi.video/
 
 ================================================================================
 
+5. @microsoft/signalr JavaScript client (Version 8.0.0)
+   Copyright (c) .NET Foundation and Contributors
+   Licensed under the MIT License
+   Bundled as wwwroot/js/signalr.min.js and StreamDeck-Plugin/.../signalr.min.js
+   Source: https://github.com/dotnet/aspnetcore
+
+--------------------------------------------------------------------------------
+
+The MIT License (MIT)
+
+Copyright (c) .NET Foundation and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+
+6. Steinberg ASIO (via NAudio on Windows)
+   ASIO is a trademark of Steinberg Media Technologies GmbH.
+   NAudio's ASIO implementation interfaces with the Steinberg ASIO SDK /
+   driver model. ASIO drivers and the ASIO SDK are subject to Steinberg's
+   license and trademark terms, separate from NAudio's MIT license.
+   Source: https://www.steinberg.net/asio/
+
+================================================================================
+
+NDI REDISTRIBUTION & TRADEMARK (for installers and forks)
+
+- Installers built from this repository may bundle Processing.NDI.Lib.x64.dll
+  (Windows) or libndi.so* (Linux). That native runtime is **not** MIT-licensed;
+  it is subject to the NDI SDK license from https://ndi.video
+- Forks that ship installers inherit the obligation to include NDI SDK
+  attribution and forward the NDI EULA/terms to end users
+- NDI® is a registered trademark of Vizrt NDI AB. Use of the name and logo
+  requires compliance with Vizrt trademark guidelines
+- wwwroot/ndi-logo.png is the NDI brand mark, used with permission in this
+  sample. It is **excluded** from the MIT grant — forks must not assume they
+  may reuse the logo without separate authorization
+
+================================================================================
+
 ADDITIONAL NOTICES
 
 Web Technologies:
-This software's web interface uses standard HTML5, CSS3, and vanilla JavaScript,
-which are open web standards and not subject to additional licensing.
+The web UI uses HTML5, CSS3, and application JavaScript. The bundled SignalR
+JavaScript client (@microsoft/signalr 8.0.0, MIT) is listed in section 5 above.
+
+Stream Deck:
+Stream Deck® is a trademark of Elgato Systems GmbH. The plugin in this
+repository is a third-party integration, not an official Elgato product.
 
 Operating System APIs:
 This software uses Windows operating system APIs (WASAPI, Windows Services),

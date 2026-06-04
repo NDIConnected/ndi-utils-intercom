@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,6 +31,8 @@ namespace NDIIntercom.Core
         private NoiseGate _noiseGate;
         private string? _micDevice;
         private string? _speakerDevice;
+        private HashSet<string> _allowedInputDeviceIds = new(StringComparer.Ordinal);
+        private HashSet<string> _allowedOutputDeviceIds = new(StringComparer.Ordinal);
 
         private volatile bool _captureRunning;
         private volatile bool _playbackRunning;
@@ -120,13 +123,42 @@ namespace NDIIntercom.Core
         public void SelectMicrophone(string deviceId)
         {
             StopCapture();
-            _micDevice = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId.Trim();
+            RefreshAllowedDeviceIds();
+            _micDevice = ValidateDeviceId(deviceId, _allowedInputDeviceIds, "input");
         }
 
         public void SelectSpeaker(string deviceId)
         {
             StopPlayback();
-            _speakerDevice = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId.Trim();
+            RefreshAllowedDeviceIds();
+            _speakerDevice = ValidateDeviceId(deviceId, _allowedOutputDeviceIds, "output");
+        }
+
+        private string? ValidateDeviceId(string deviceId, HashSet<string> allowedIds, string kind)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                return null;
+            }
+
+            string trimmed = deviceId.Trim();
+            if (allowedIds.Count > 0 && !allowedIds.Contains(trimmed))
+            {
+                _logger.LogWarning("PulseAudio: ignoring unknown {Kind} device {DeviceId}", kind, trimmed);
+                return null;
+            }
+
+            return trimmed;
+        }
+
+        private void RefreshAllowedDeviceIds()
+        {
+            _allowedInputDeviceIds = GetInputDevices()
+                .Select(d => d.DeviceId ?? string.Empty)
+                .ToHashSet(StringComparer.Ordinal);
+            _allowedOutputDeviceIds = GetOutputDevices()
+                .Select(d => d.DeviceId ?? string.Empty)
+                .ToHashSet(StringComparer.Ordinal);
         }
 
         public void StartCapture()
@@ -299,21 +331,23 @@ namespace NDIIntercom.Core
 
         private void RunParecCapture()
         {
-            var args = "--raw --format=s16le --channels=2 --rate=48000 --latency-msec=10";
-            if (!string.IsNullOrEmpty(_micDevice))
-            {
-                args += $" --device={_micDevice}";
-            }
-
             var psi = new ProcessStartInfo
             {
                 FileName = PulseAudioBinaries.GetParecPathOrThrow(),
-                Arguments = args,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            psi.ArgumentList.Add("--raw");
+            psi.ArgumentList.Add("--format=s16le");
+            psi.ArgumentList.Add("--channels=2");
+            psi.ArgumentList.Add("--rate=48000");
+            psi.ArgumentList.Add("--latency-msec=10");
+            if (!string.IsNullOrEmpty(_micDevice))
+            {
+                psi.ArgumentList.Add($"--device={_micDevice}");
+            }
 
             using var proc = Process.Start(psi);
             if (proc == null)
@@ -443,21 +477,23 @@ namespace NDIIntercom.Core
 
         private void RunPacatPlayback()
         {
-            var args = "--raw --format=s16le --channels=2 --rate=48000 --latency-msec=20";
-            if (!string.IsNullOrEmpty(_speakerDevice))
-            {
-                args += $" --device={_speakerDevice}";
-            }
-
             var psi = new ProcessStartInfo
             {
                 FileName = PulseAudioBinaries.GetPacatPathOrThrow(),
-                Arguments = args,
                 RedirectStandardInput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            psi.ArgumentList.Add("--raw");
+            psi.ArgumentList.Add("--format=s16le");
+            psi.ArgumentList.Add("--channels=2");
+            psi.ArgumentList.Add("--rate=48000");
+            psi.ArgumentList.Add("--latency-msec=20");
+            if (!string.IsNullOrEmpty(_speakerDevice))
+            {
+                psi.ArgumentList.Add($"--device={_speakerDevice}");
+            }
 
             using var proc = Process.Start(psi);
             if (proc == null)

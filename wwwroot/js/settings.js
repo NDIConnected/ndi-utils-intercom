@@ -4,6 +4,15 @@ const connection = new signalR.HubConnectionBuilder()
     .withAutomaticReconnect()
     .build();
 
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 let config = null;
 let inputDevices = [];
 let outputDevices = [];
@@ -393,15 +402,15 @@ function populateNDIChannels() {
                 <select id="ndiReceive${i}">
                     <option value="">None</option>
                     ${ndiSources.map(source => `
-                        <option value="${source}" ${source === channelConfig.ndiReceiveName ? 'selected' : ''}>
-                            ${source}
+                        <option value="${escapeHtml(source)}" ${source === channelConfig.ndiReceiveName ? "selected" : ""}>
+                            ${escapeHtml(source)}
                         </option>
-                    `).join('')}
+                    `).join("")}
                 </select>
             </div>
 
             <label>NDI Send:</label>
-            <input type="text" id="ndiSend${i}" value="${channelConfig.ndiSendName}" placeholder="Channel ${i}">
+            <input type="text" id="ndiSend${i}" value="${escapeHtml(channelConfig.ndiSendName)}" placeholder="Channel ${i}">
             ${asioBlock}
         `;
 

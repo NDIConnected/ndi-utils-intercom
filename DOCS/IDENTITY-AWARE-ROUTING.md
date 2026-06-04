@@ -424,7 +424,7 @@ Names emitted by older v1.x clients (pre‑v1.7) have **no** `[app=…;…;ch=�
 ## 9. Related documentation
 
 - [README.md](../README.md) — repository overview.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — § *Identity & Discovery*.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — identity-aware routing and discovery (see also §9 in this document).
 - [API_REST_GUIDE.md](API_REST_GUIDE.md) — REST endpoints (channel state, presets) and how to read identity via SignalR `GetConfiguration`.
 - [INTERCOM USER_MANUAL.md](INTERCOM%20USER_MANUAL.md) — § *Application Identity* in the Settings panel.
-- [CHANGELOG.md](CHANGELOG.md) — release history for v1.7.x
+- [CHANGELOG.md](../CHANGELOG.md) — release history for v1.7.x

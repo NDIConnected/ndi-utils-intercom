@@ -30,64 +30,58 @@ namespace NDIIntercom.Core
 
         public static void SavePreset(string presetName, AppConfig config)
         {
-            try
+            EnsureMigrated();
+
+            if (string.IsNullOrWhiteSpace(presetName))
             {
-                EnsureMigrated();
-
-                if (string.IsNullOrWhiteSpace(presetName))
-                {
-                    throw new ArgumentException("Preset name cannot be empty");
-                }
-
-                // Sanitize preset name for file system
-                string sanitizedName = SanitizeFileName(presetName);
-                string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
-
-                Directory.CreateDirectory(PresetsDirectory);
-
-                string json = JsonSerializer.Serialize(config, JsonOptions);
-                File.WriteAllText(filePath, json);
+                throw new ArgumentException("Preset name cannot be empty");
             }
-            catch (Exception)
+
+            string sanitizedName = SanitizeFileName(presetName);
+            if (string.IsNullOrWhiteSpace(sanitizedName))
             {
-                throw;
+                throw new ArgumentException("Preset name is invalid after sanitization");
             }
+
+            string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
+            Directory.CreateDirectory(PresetsDirectory);
+
+            string json = JsonSerializer.Serialize(config, JsonOptions);
+            File.WriteAllText(filePath, json);
         }
 
         public static AppConfig LoadPreset(string presetName)
         {
-            try
+            EnsureMigrated();
+
+            if (string.IsNullOrWhiteSpace(presetName))
             {
-                EnsureMigrated();
-
-                if (string.IsNullOrWhiteSpace(presetName))
-                {
-                    throw new ArgumentException("Preset name cannot be empty");
-                }
-
-                string sanitizedName = SanitizeFileName(presetName);
-                string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
-
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException($"Preset not found: {presetName}");
-                }
-
-                string json = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
-
-                if (config == null)
-                {
-                    throw new InvalidOperationException($"Failed to load preset: {presetName}");
-                }
-
-                config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
-                return config;
+                throw new ArgumentException("Preset name cannot be empty");
             }
-            catch (Exception)
+
+            string sanitizedName = SanitizeFileName(presetName);
+            if (string.IsNullOrWhiteSpace(sanitizedName))
             {
-                throw;
+                throw new ArgumentException("Preset name is invalid after sanitization");
             }
+
+            string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Preset not found: {presetName}");
+            }
+
+            string json = File.ReadAllText(filePath);
+            var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+
+            if (config == null)
+            {
+                throw new InvalidOperationException($"Failed to load preset: {presetName}");
+            }
+
+            config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
+            return config;
         }
 
         public static List<string> ListPresets()
@@ -117,29 +111,27 @@ namespace NDIIntercom.Core
 
         public static void DeletePreset(string presetName)
         {
-            try
+            EnsureMigrated();
+
+            if (string.IsNullOrWhiteSpace(presetName))
             {
-                EnsureMigrated();
-
-                if (string.IsNullOrWhiteSpace(presetName))
-                {
-                    throw new ArgumentException("Preset name cannot be empty");
-                }
-
-                string sanitizedName = SanitizeFileName(presetName);
-                string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
-
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException($"Preset not found: {presetName}");
-                }
-
-                File.Delete(filePath);
+                throw new ArgumentException("Preset name cannot be empty");
             }
-            catch (Exception)
+
+            string sanitizedName = SanitizeFileName(presetName);
+            if (string.IsNullOrWhiteSpace(sanitizedName))
             {
-                throw;
+                throw new ArgumentException("Preset name is invalid after sanitization");
             }
+
+            string filePath = Path.Combine(PresetsDirectory, $"{sanitizedName}.json");
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Preset not found: {presetName}");
+            }
+
+            File.Delete(filePath);
         }
 
         private static string SanitizeFileName(string fileName)

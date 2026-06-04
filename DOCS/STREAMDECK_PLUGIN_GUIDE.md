@@ -88,7 +88,7 @@ com.ndi.intercom16.sdPlugin/
   "CategoryIcon": "images/pluginIcon",
   "Icon": "images/pluginIcon",
   "URL": "http://localhost:5016",
-  "Version": "1.0.0",
+  "Version": "1.2.1",
   "OS": [
     {
       "Platform": "windows",

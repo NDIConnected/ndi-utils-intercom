@@ -206,7 +206,6 @@ curl -X POST http://localhost:5016/api/ndibridge/host/stop -H "Content-Type: app
 
 - **Complete Guide**: See `NDI-BRIDGE-INTEGRATION.md`
 - **API Examples**: See `NDI-BRIDGE-API-EXAMPLES.md`
-- **Run Test**: Execute `test-ndi-bridge-integration.ps1`
 - **Release notes**: See [CHANGELOG.md](../CHANGELOG.md)
 
 ---

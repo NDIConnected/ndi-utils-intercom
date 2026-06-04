@@ -1,6 +1,7 @@
 #if WINDOWS
 using System.Windows.Forms;
 #endif
+using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,8 @@ public static class IntercomAppHost
             .Build();
 
         int port = configForPort.GetValue<int?>("WebServer:Port") ?? IntercomRuntime.Product.DefaultWebPort;
+        bool bindLocalhostOnly = configForPort.GetValue<bool?>("WebServer:BindLocalhostOnly") ?? true;
+        string? bindAddress = configForPort.GetValue<string>("WebServer:BindAddress");
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -76,15 +79,41 @@ public static class IntercomAppHost
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy.AllowAnyOrigin()
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
+                policy.SetIsOriginAllowed(origin =>
+                {
+                    if (string.IsNullOrEmpty(origin))
+                    {
+                        return false;
+                    }
+
+                    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                    {
+                        return false;
+                    }
+
+                    return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                        || uri.Host == "127.0.0.1"
+                        || uri.Host == "[::1]";
+                })
+                .AllowAnyMethod()
+                .AllowAnyHeader();
             });
         });
 
         builder.WebHost.ConfigureKestrel(options =>
         {
-            options.ListenAnyIP(port);
+            if (bindLocalhostOnly)
+            {
+                options.ListenLocalhost(port);
+            }
+            else if (string.IsNullOrWhiteSpace(bindAddress) || bindAddress == "0.0.0.0" || bindAddress == "*")
+            {
+                options.ListenAnyIP(port);
+            }
+            else
+            {
+                options.Listen(IPAddress.Parse(bindAddress), port);
+            }
         });
 
         var app = builder.Build();
@@ -104,6 +133,19 @@ public static class IntercomAppHost
         var intercomEngine = app.Services.GetRequiredService<IntercomEngine>();
 
         var startupLogger = loggerFactory.CreateLogger("NDIIntercom.Startup");
+        if (bindLocalhostOnly)
+        {
+            startupLogger.LogInformation(
+                "Web UI listening on http://127.0.0.1:{Port} (localhost only). Set WebServer:BindLocalhostOnly=false in appsettings.json to expose on the network — not recommended without additional access controls.",
+                port);
+        }
+        else
+        {
+            startupLogger.LogWarning(
+                "Web UI listening on all interfaces (port {Port}). The control API has no authentication; restrict network access or bind to localhost.",
+                port);
+        }
+
         _ = Task.Run(() =>
         {
             try
@@ -164,7 +206,7 @@ public static class IntercomAppHost
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new TrayApplicationContext(app, port));
 #else
-        Console.WriteLine($"{IntercomRuntime.Product.ProductDisplayName} — http://0.0.0.0:{port}  (Ctrl+C to exit)");
+        Console.WriteLine($"{IntercomRuntime.Product.ProductDisplayName} — http://127.0.0.1:{port}  (Ctrl+C to exit)");
         Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = true;
