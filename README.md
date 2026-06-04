@@ -167,4 +167,4 @@ MIT License — Copyright (c) 2026 Vizrt NDI AB. See [LICENSE](LICENSE).
 
 Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt). The NDI logo and NDI® trademark are **not** covered by MIT; see that file for redistribution and trademark notes.
 
-Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Security: [SECURITY.md](SECURITY.md).
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Security: [SECURITY.md](SECURITY.md).

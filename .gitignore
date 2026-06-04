@@ -15,6 +15,7 @@ NDI 6 SDK/
 .vs/
 *.user
 *.suo
+Properties/launchSettings.json
 wwwroot/.vscode/
 
 # Temp files

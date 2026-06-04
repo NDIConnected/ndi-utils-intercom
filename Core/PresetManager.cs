@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NDIIntercom.Models;
 
 namespace NDIIntercom.Core
 {
     public class PresetManager
     {
+        private static ILogger _logger = NullLogger.Instance;
+        public static void SetLogger(ILogger logger) => _logger = logger ?? NullLogger.Instance;
+
         private static string PresetsDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             IntercomRuntime.Product.DataFolderName,
@@ -103,8 +108,9 @@ namespace NDIIntercom.Core
 
                 return presetNames;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "PresetManager.ListPresets failed");
                 return new List<string>();
             }
         }
@@ -178,9 +184,9 @@ namespace NDIIntercom.Core
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                _logger.LogWarning(ex, "PresetManager.EnsureMigrated failed");
             }
         }
     }

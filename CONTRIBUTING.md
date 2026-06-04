@@ -42,6 +42,12 @@ See [README.md](README.md) for full details.
 
 Use [GitHub Issues](https://github.com/NDIConnected/ndi-utils-intercom/issues). Include product (Intercom16 / Intercom2), version, OS, and steps to reproduce.
 
+**Security vulnerabilities** must not be posted as public issues. Use [GitHub Security Advisories](https://github.com/NDIConnected/ndi-utils-intercom/security/advisories/new) instead. See [SECURITY.md](SECURITY.md).
+
+## Code of conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By participating, you agree to uphold it.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the same [MIT License](LICENSE) as the project.

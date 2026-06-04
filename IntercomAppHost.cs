@@ -125,6 +125,10 @@ public static class IntercomAppHost
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
         NDIManager.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.NDIManager"));
         ConfigManager.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.ConfigManager"));
+        PresetManager.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.PresetManager"));
+#if !WINDOWS
+        PactlDeviceList.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.Linux.PactlDeviceList"));
+#endif
         // Both Windows (WASAPI) and Linux (parec/pacat) AudioEngine implementations expose
         // the same static SetLogger entry point under the same fully-qualified name; the
         // `using` block at the top of each file resolves to the right type per platform.

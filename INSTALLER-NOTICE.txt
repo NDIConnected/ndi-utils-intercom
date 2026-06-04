@@ -1,0 +1,20 @@
+NDI Intercom16 / NDI Intercom2 — Installer notice
+
+This installer may bundle the NDI SDK runtime library (Processing.NDI.Lib.x64.dll)
+alongside the application. That native library is NOT covered by the MIT license
+for the NDI Intercom application source code.
+
+By continuing, you acknowledge that use of the NDI SDK runtime is subject to the
+NDI SDK license terms published by Vizrt NDI AB:
+
+  https://ndi.video
+
+NDI(R) is a registered trademark of Vizrt NDI AB. The NDI logo and NDI name are
+trademarks of Vizrt NDI AB and are not licensed under MIT.
+
+The NDI Intercom application software itself is licensed under the MIT License
+(see LICENSE and THIRD-PARTY-LICENSES.txt in the installation folder).
+
+NDI Intercom is reference sample software and is not officially supported as a
+production product. The embedded web control API has no authentication when remote
+access is enabled — restrict network access on untrusted networks.

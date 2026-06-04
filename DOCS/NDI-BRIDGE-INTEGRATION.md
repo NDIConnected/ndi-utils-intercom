@@ -237,11 +237,11 @@ When using NDI Bridge Service with SSL enabled:
 
 ## Version History
 
-### v1.3.1 (Current)
-- Added NDI Bridge Service integration
-- Settings UI for Host/Join/Local mode control
-- Real-time status monitoring
+### v1.7.3 (Current)
+- NDI Bridge Service integration (Host/Join/Local modes)
+- Settings UI for bridge control and real-time status monitoring
 - Automatic configuration management
+- See [CHANGELOG.md](../CHANGELOG.md) for full release history
 
 ---
 

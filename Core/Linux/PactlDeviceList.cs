@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace NDIIntercom.Core.Linux
 {
@@ -11,6 +13,9 @@ namespace NDIIntercom.Core.Linux
     /// </summary>
     internal static class PactlDeviceList
     {
+        private static ILogger _logger = NullLogger.Instance;
+        internal static void SetLogger(ILogger logger) => _logger = logger ?? NullLogger.Instance;
+
         internal static List<(string Name, string Description, bool Running)> ListSources()
         {
             List<(string Name, string Description, bool Running)> list;
@@ -209,8 +214,9 @@ namespace NDIIntercom.Core.Linux
                 p.WaitForExit(5000);
                 return stdout;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "PactlDeviceList: pactl invocation failed");
                 return "";
             }
         }

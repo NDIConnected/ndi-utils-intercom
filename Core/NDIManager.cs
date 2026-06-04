@@ -341,6 +341,7 @@ namespace NDIIntercom.Core
 
         internal static void LogInfo(string message) => _logger.LogInformation("{Message}", message);
         internal static void LogWarning(string message) => _logger.LogWarning("{Message}", message);
+        internal static void LogWarning(Exception ex, string message) => _logger.LogWarning(ex, "{Message}", message);
         internal static void LogError(Exception ex, string message) => _logger.LogError(ex, "{Message}", message);
         internal static void LogDebug(string message) => _logger.LogDebug("{Message}", message);
 
@@ -430,9 +431,9 @@ namespace NDIIntercom.Core
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
 
             return sources;
@@ -468,9 +469,9 @@ namespace NDIIntercom.Core
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
 
             return null;
@@ -712,9 +713,9 @@ namespace NDIIntercom.Core
                 {
                     NDIWrapper.NDIlib_recv_connect(_receiverInstance, ref source);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently continue
+                    NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
                 }
             }
         }
@@ -734,9 +735,9 @@ namespace NDIIntercom.Core
                 {
                     NDIWrapper.NDIlib_recv_connect(_receiverInstance, IntPtr.Zero);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently continue
+                    NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
                 }
             }
 
@@ -863,9 +864,9 @@ namespace NDIIntercom.Core
                 string metadataXml = BuildNdiProductMetadataXml(BuildSenderName());
                 RegisterMetadata(_senderInstance, metadataXml, isSender: true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
         }
 
@@ -913,9 +914,9 @@ namespace NDIIntercom.Core
                 string capabilitiesXml = $"<ndi_capabilities web_control=\"http://%IP%:{_webPort}/\" />";
                 RegisterMetadata(_senderInstance, capabilitiesXml, isSender: true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
         }
 
@@ -933,9 +934,9 @@ namespace NDIIntercom.Core
                 string metadataXml = BuildNdiProductMetadataXml(BuildReceiverName());
                 RegisterMetadata(_receiverInstance, metadataXml, isSender: false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
         }
 
@@ -1111,9 +1112,9 @@ namespace NDIIntercom.Core
 
                 // NO FREE! Buffer is persistent and reused (ping-pong pattern)
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
             } // _ndiLifetimeLock
         }
@@ -1144,8 +1145,9 @@ namespace NDIIntercom.Core
 
                 return audioData;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                NDIManager.LogWarning(ex, "NDIManager: audio receive failed");
                 return null;
             }
         }
@@ -1299,9 +1301,9 @@ namespace NDIIntercom.Core
                     chunksDrained++;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
             }
             } // _ndiLifetimeLock
 
@@ -1324,9 +1326,9 @@ namespace NDIIntercom.Core
                     NDIWrapper.NDIlib_send_destroy(_senderInstance);
                     _senderInstance = IntPtr.Zero;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently continue
+                    NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
                 }
             }
         }
@@ -1350,9 +1352,9 @@ namespace NDIIntercom.Core
                     NDIWrapper.NDIlib_recv_destroy(_receiverInstance);
                     _receiverInstance = IntPtr.Zero;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently continue
+                    NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
                 }
             }
 
