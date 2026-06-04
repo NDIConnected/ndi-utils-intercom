@@ -4,6 +4,19 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.4] — 2026-06
+
+### Added
+- Tray **Web Server Settings**: port plus optional remote control on a **selected network interface** (localhost always available on the server PC).
+- `SECURITY.md`, `CODE_OF_CONDUCT.md`, GitHub issue/PR templates, and installer NDI SDK notice.
+
+### Security
+- Web UI defaults to **localhost only**; config export/import confined to app data; CORS and `AllowedHosts` restricted by default.
+- NDI P/Invoke bool marshaling and UTF-8 string decoding fixes; XSS hardening in web UI; Linux audio subprocess argument validation.
+
+### Changed
+- Installers use Inno `x64` architecture identifier and ship `INSTALLER-NOTICE.txt`.
+
 ## [1.7.3] — 2026-05
 
 ### Fixed

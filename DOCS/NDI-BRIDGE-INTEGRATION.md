@@ -237,7 +237,7 @@ When using NDI Bridge Service with SSL enabled:
 
 ## Version History
 
-### v1.7.3 (Current)
+### v1.7.4 (Current)
 - NDI Bridge Service integration (Host/Join/Local modes)
 - Settings UI for bridge control and real-time status monitoring
 - Automatic configuration management

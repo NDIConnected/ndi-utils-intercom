@@ -204,8 +204,8 @@ copyright holders directly.
 
 ================================================================================
 
-This document applies to NDI Intercom16 / NDI Intercom2 v1.7.3
-Last updated: May 2026
+This document applies to NDI Intercom16 / NDI Intercom2 v1.7.4
+Last updated: June 2026
 
 Copyright (c) 2026 Vizrt NDI AB
 NDI Intercom is MIT-licensed application software — see LICENSE

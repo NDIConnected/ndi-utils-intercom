@@ -82,7 +82,7 @@ dotnet publish "NDI Intercom16.csproj" -c Release -r win-x64 --self-contained tr
 
 3. Compile **Inno Setup** with [installer-script-intercom16.iss](installer-script-intercom16.iss) (expects output under `publish\`).  
    Or run [build-intercom16-installer.cmd](build-intercom16-installer.cmd) to publish and compile in one step.  
-   Result: `Installer-Output\NDI-Intercom16-Setup-v1.7.3.exe` (version follows `#define` in the `.iss`).
+   Result: `Installer-Output\NDI-Intercom16-Setup-v1.7.4.exe` (version follows `#define` in the `.iss`).
 
 ### NDI Intercom2
 
@@ -97,7 +97,7 @@ dotnet publish "NDI Intercom2.csproj" -c Release -r win-x64 --self-contained tru
 
 2. Compile [installer-script-intercom2.iss](installer-script-intercom2.iss) from the repo root (Inno `Source` paths are relative to the `.iss` file). **You must publish first** so `publish-intercom2\` is populated; otherwise Inno reports no files for `publish-intercom2\*`.
 
-   Result: `Installer-Output\NDI-Intercom2-Setup-v1.7.3.exe` (version in the `.iss` / `.csproj` should be kept in sync).
+   Result: `Installer-Output\NDI-Intercom2-Setup-v1.7.4.exe` (version in the `.iss` / `.csproj` should be kept in sync).
 
 ## Installation (end users)
 

@@ -72,7 +72,7 @@ Ideal for:
 
 ## Installation
 
-1. Download `NDI-Intercom16-Setup-v1.7.3.exe` from the [releases page](https://github.com/NDIConnected/ndi-utils-intercom/releases)
+1. Download `NDI-Intercom16-Setup-v1.7.4.exe` from the [releases page](https://github.com/NDIConnected/ndi-utils-intercom/releases)
 2. Run the installer with administrator privileges
 3. Follow the guided procedure:
    - Accept the license
@@ -1176,7 +1176,7 @@ A:
 
 To report issues, provide:
 
-1. **Application version**: v1.7.3 (NDI Intercom16)
+1. **Application version**: v1.7.4 (NDI Intercom16)
 2. **Operating System**: (e.g., Windows 11 Pro 24H2)
 3. **Configuration**:
    ```powershell
@@ -1283,9 +1283,9 @@ Earlier milestones (ASIO support, NDI Bridge, desktop/tray app, unified intercom
 
 ---
 
-**Manual Version**: 1.7.3  
+**Manual Version**: 1.7.4  
 **Date**: May 2026  
-**Application**: NDI Intercom16 v1.7.3
+**Application**: NDI Intercom16 v1.7.4
 
 ---
 

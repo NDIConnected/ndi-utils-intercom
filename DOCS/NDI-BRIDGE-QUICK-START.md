@@ -227,4 +227,4 @@ curl -X POST http://localhost:5016/api/ndibridge/host/stop -H "Content-Type: app
 
 **That's it!** You're ready to use NDI Bridge integration. For advanced features and detailed documentation, see the complete guide.
 
-**Version**: 1.7.3 | **Updated**: June 2026
+**Version**: 1.7.4 | **Updated**: June 2026
