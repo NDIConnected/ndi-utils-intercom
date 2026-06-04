@@ -136,7 +136,7 @@ public static class IntercomAppHost
         if (bindLocalhostOnly)
         {
             startupLogger.LogInformation(
-                "Web UI listening on http://127.0.0.1:{Port} (localhost only). Set WebServer:BindLocalhostOnly=false in appsettings.json to expose on the network — not recommended without additional access controls.",
+                "Web UI listening on http://127.0.0.1:{Port} (localhost only). Enable LAN access from the tray: Web Server Settings → Allow control from other computers on this network.",
                 port);
         }
         else

@@ -104,11 +104,11 @@ dotnet publish "NDI Intercom2.csproj" -c Release -r win-x64 --self-contained tru
 - **Intercom16**: installs under `C:\Program Files\NDI\NDI Intercom16` (per installer script).
 - **Intercom2**: installs under `C:\Program Files\NDI\NDI Intercom2`.
 
-After install, use the **system tray** icon (hidden icons area) to open the web UI or change the HTTP port (writes `appsettings.json` next to the executable). The web UI listens on **http://127.0.0.1:{port}** by default.
+After install, use the **system tray** icon (hidden icons area) to open the web UI or open **Web Server Settings…** to change the HTTP port and allow control from other computers on the LAN (writes `appsettings.json` next to the executable; restart required). The web UI listens on **http://127.0.0.1:{port}** by default.
 
 ### Network exposure
 
-The embedded Kestrel server defaults to **localhost only** (`WebServer:BindLocalhostOnly`: `true` in `appsettings.json`). To listen on all interfaces (not recommended without additional access controls), set `BindLocalhostOnly` to `false`. See [SECURITY.md](SECURITY.md).
+The embedded Kestrel server defaults to **localhost only**. To allow other PCs on the same network, use the tray menu **Web Server Settings…** and enable *Allow control from other computers on this network*, or set `WebServer:BindLocalhostOnly` to `false` and `AllowedHosts` to `"*"` in `appsettings.json`. There is no authentication — restrict access with firewall rules or VPN on untrusted networks. See [SECURITY.md](SECURITY.md).
 
 ## Configuration
 

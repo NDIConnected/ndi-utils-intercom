@@ -19,7 +19,7 @@ Every instance is **identity-aware**: an `(application_id, device_id)` pair tags
 
 - Registers controllers, SignalR, static files (`wwwroot/`)
 - Starts `IntercomEngine` (audio + NDI)
-- On Windows, shows `TrayApplicationContext` for tray menu and port configuration
+- On Windows, shows `TrayApplicationContext` for tray menu, port, and LAN access settings
 
 Configuration and presets: `%ProgramData%\NDI Intercom16\` or `%ProgramData%\NDI Intercom2\` (Windows); `~/.local/share/NDI/…` (Linux).
 

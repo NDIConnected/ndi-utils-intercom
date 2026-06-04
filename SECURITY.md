@@ -23,7 +23,9 @@ Include steps to reproduce, affected version, and impact if known.
 
 This sample ships with **no authentication** on its embedded web server and SignalR hub. By default the server binds to **localhost only** (`WebServer:BindLocalhostOnly` in `appsettings.json`).
 
-**Do not** set `BindLocalhostOnly` to `false` or bind to `0.0.0.0` unless you understand the risk: anyone who can reach the port can control talk/listen, rewrite configuration, manage presets, and proxy commands to NDI Bridge.
+On Windows, operators can enable LAN access from the system tray: **Web Server Settings…** → *Allow control from other computers on this network* (requires restart). This sets `BindLocalhostOnly` to `false` and `AllowedHosts` to `*`.
+
+**Do not** enable LAN access on untrusted networks: anyone who can reach the port can control talk/listen, rewrite configuration, manage presets, and proxy commands to NDI Bridge.
 
 Configuration export/import is confined to the per-product `Exports` folder under the application data directory; arbitrary path read/write is not permitted.
 
