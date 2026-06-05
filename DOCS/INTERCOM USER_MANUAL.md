@@ -146,26 +146,28 @@ Allow inbound TCP on that port in Windows Firewall if prompted.
 2. In the **"Audio Devices"** section:
    - **Input Device (Microphone)**: Select the microphone to use
    - **Output Device (Speakers)**: Select headphones or speakers
-3. Click **"Apply Audio Settings"**
-4. Verify the **VU Meter** in the header moves when you speak
+3. Click **Apply** at the bottom of the Settings page
+4. Verify the **Input Level** bar in the header moves when you speak
 
 #### Step 2: Configure Your First NDI Channel
 
 For each channel you want to activate:
 
-1. Expand the **"Channel X Configuration"** section
+1. In **Settings → Channels Configuration**, open the card for that channel
 2. Configure:
-   - **NDI Send Name**: Output channel name (e.g., "CONTROL-ROOM", "CAMERA-1")
-   - **Enable NDI Send**: ✅ to enable NDI sending
-   - **NDI Receive Source**: Select NDI source to receive (will appear in dropdown)
-   - **Enable NDI Receive**: ✅ to enable NDI reception
-3. Click **"Apply"** to save
+   - **Mode**: NDI (default) or ASIO (Windows only)
+   - **NDI Send**: Name published on the network (e.g., `CONTROL-ROOM`, `CAMERA-1`)
+   - **NDI Receive**: Select a remote NDI source from the dropdown, or **None**
+   - For **ASIO** mode: pick **ASIO Input** and **ASIO Output** channel indices
+3. Click **Apply** to save
+
+Assign **intercom groups** on the main dashboard (see [Intercom Groups](#intercom-groups)).
 
 #### Step 3: Test Communication (NDI mode)
 
-1. Return to main page (click "NDI Intercom" logo)
-2. Click **TALK** button on Channel 1 (turns green)
-3. Click **LISTEN** button on Channel 1 (turns blue)
+1. Return to the main page (**Cancel** on Settings, or open `/index.html`)
+2. Click **TALK** on Channel 1 (button turns **red** when active)
+3. Click **LISTEN** on Channel 1 (button turns **blue** when active)
 4. Speak into your microphone
 5. You should hear yourself in the headphones (if configured for loopback testing)
 
@@ -175,74 +177,66 @@ For each channel you want to activate:
 
 ### Layout
 
-The interface is divided into three main areas:
+The main dashboard has a **header** and a **grid of channel cards** (16 for Intercom16, 2 for Intercom2).
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  [NDI Logo] Intercom16   [VU Meter]   [Settings ⚙]                         │ ← Header
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  │
-│  │ CH 1 │ │ CH 2 │ │ CH 3 │ │ CH 4 │ │ CH 5 │ │ CH 6 │ │ CH 7 │ │ CH 8 │  │
-│  │GRP:1 │ │GRP:1 │ │GRP:2 │ │GRP:0 │ │GRP:2 │ │GRP:3 │ │GRP:0 │ │GRP:4 │  │
-│  │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │  │
-│  │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│  │
-│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘  │
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  │
-│  │ CH 9 │ │ CH10 │ │ CH11 │ │ CH12 │ │ CH13 │ │ CH14 │ │ CH15 │ │ CH16 │  │
-│  │GRP:1 │ │GRP:2 │ │GRP:0 │ │GRP:3 │ │GRP:1 │ │GRP:4 │ │GRP:2 │ │GRP:0 │  │
-│  │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │ │ TALK │  │
-│  │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│ │LISTEN│  │
-│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘  │
-│                                                                              │
-│  [RESET ALL CHANNELS]                                                       │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [NDI] Intercom16    Input Level [====VU====]    💾 Save  📂 Load  Settings ⚙ │ ← Header
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ... (up to 16 cards)     │
+│  │ Channel 1   │  │ Channel 2   │  │ Channel 3   │                          │
+│  │  [ TALK ]   │  │  [ TALK ]   │  │  [ TALK ]   │                          │
+│  │ [ LISTEN ]  │  │ [ LISTEN ]  │  │ [ LISTEN ]  │                          │
+│  │ In / Out    │  │ In / Out    │  │ In / Out    │  ← level knobs + NDI VU  │
+│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  ← intercom group        │
+│  └─────────────┘  └─────────────┘  └─────────────┘                          │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+There is **no** global “Reset all channels” button on this page. Use per-channel **TALK** / **LISTEN**, or a **Stream Deck “Reset All”** action if you use the plugin.
 
 ### Interface Elements
 
 #### 1. Header Bar
-- **NDI Logo + Title**: Application identification
-- **VU Meter**: Real-time input microphone audio level
-  - Green: Good level (-12 dB to -6 dB)
-  - Yellow: Moderate level (-6 dB to -3 dB)
-  - Red: Clipping/too loud (> -3 dB) - reduce gain!
-- **Settings Button**: Access to configuration page
+
+- **NDI logo + product title** (e.g. Intercom16)
+- **Input Level**: horizontal VU bar for the selected microphone (gradient green → yellow → red by level)
+- **Save / Load**: save or restore named **configuration presets** (full settings snapshot)
+- **Settings ⚙**: opens the Settings page
 
 #### 2. Channel Card
 
-Each channel displays:
+Each channel card contains:
 
 ```
 ┌─────────────────────┐
-│ Channel 1           │ ← Channel number
-│ CONTROL-ROOM        │ ← Custom name (from NDI Send Name)
-│ Group: 1            │ ← Intercom group assignment
-│                     │
-│ ┌─────────────────┐ │
-│ │  TALK  │ LISTEN │ │ ← Control buttons
-│ └─────────────────┘ │
-│                     │
-│ 🟢 NDI ACTIVE       │ ← NDI stream status
+│ Channel 1           │ ← click header to rename (dashboard label)
+│ [      TALK      ]  │
+│ [     LISTEN     ]  │
+│ Input Level  [VU|◉] │ ← vertical NDI VU + input level knob
+│ Output Level   [◉]  │ ← output level knob
+│ Intercom Group      │
+│ [NONE][1][2][3][4]  │
 └─────────────────────┘
 ```
 
-**Button States:**
+**TALK / LISTEN**
 
-- **TALK (Red/Dark Red)**: Transmitting audio to channel
-  - Bright Red: Active ON
-  - Dark Red: Inactive OFF
-- **LISTEN (Blue/Dark Blue)**: Receiving audio from channel
-  - Bright Blue: Active ON
-  - Dark Blue: Inactive OFF
-- **NDI Status:**
-  - 🟢 Green "NDI ACTIVE": Stream active and healthy
-  - 🔴 Red "NDI INACTIVE": Stream not active
+- **TALK**: dim when off; **bright red** when active (transmitting on that channel)
+- **LISTEN**: dim when off; **bright blue** when active (hearing that channel’s mix)
 
-#### 3. RESET ALL Button
+**Levels**
 
-- Click to disable TALK and LISTEN on all channels simultaneously
-- Useful for quick "silence" or panic button
-- Shows confirmation checkmark when successful
+- **Input / Output knobs**: drag vertically to set channel gain (0–100)
+- **Vertical NDI VU** (beside input knob): shows incoming NDI level on that channel; drops to zero if the stream stops updating (no separate “NDI ACTIVE / INACTIVE” label)
+
+**Intercom group**
+
+- **NONE** plus **1–4**: only one active per channel; same as group 0–4 elsewhere in this manual
+
+**Channel label**
+
+- Click the channel title on the dashboard to edit the **display label** (browser prompt). This is separate from **NDI Send** in Settings, which controls the name on the NDI network.
 
 ### Real-Time Synchronization
 
@@ -267,44 +261,44 @@ Both modes support N-1 intercom groups. Channels in different modes can be assig
 
 ### Configuration Parameters
 
-For each channel, you can configure:
+For each channel in **Settings → Channels Configuration**:
 
-#### NDI Send Configuration
-- **NDI Send Name**: Unique name visible on the network
-  - ✅ Use descriptive names (e.g., "CONTROL-ROOM", "CAM-1")
-  - ✅ Use hyphens instead of spaces
-  - ❌ Don't duplicate names on the same network
-- **Enable NDI Send**: Toggle to enable/disable sending
+#### NDI mode (default)
 
-#### NDI Receive Configuration
-- **NDI Receive Source**: Select from available NDI sources on network
-- **Enable NDI Receive**: Toggle to enable/disable receiving
+- **NDI Send**: Name published on the network (must be unique per sender on the LAN)
+- **NDI Receive**: Dropdown of discovered sources, or **None** if this channel only transmits
 
-#### Intercom Group
-- **Group Assignment**: Select 0-4
-  - **0 = NONE**: Channel is isolated, not part of any group
-  - **1-4**: Assign to one of four intercom groups
+NDI send/receive are configured by name and source selection — there are no separate “enable send/receive” toggles.
+
+#### ASIO mode (Windows)
+
+- **Mode**: ASIO
+- **ASIO Input / ASIO Output**: channel indices on the selected ASIO device (configured under **Audio Devices → ASIO**)
+
+#### Intercom group
+
+- Assigned on the **main dashboard** with **NONE / 1 / 2 / 3 / 4** (not on the Settings page)
+- **0 / NONE**: channel isolated
+- **1–4**: group membership for N-1 mixing
 
 ### Example Configuration: Two Stations
 
 **Station A (Control Room):**
 ```
-Channel 1:
-- NDI Send Name: "CONTROL-ROOM"
-- Enable NDI Send: ✅
-- NDI Receive Source: "CAMERA-1" (from station B)
-- Enable NDI Receive: ✅
-- Intercom Group: 1
+Channel 1 (Settings):
+- Mode: NDI
+- NDI Send: CONTROL-ROOM
+- NDI Receive: (source from Station B, e.g. CAMERA-1)
+Dashboard: Intercom Group → 1
 ```
 
 **Station B (Camera):**
 ```
-Channel 1:
-- NDI Send Name: "CAMERA-1"
-- Enable NDI Send: ✅
-- NDI Receive Source: "CONTROL-ROOM" (from station A)
-- Enable NDI Receive: ✅
-- Intercom Group: 1
+Channel 1 (Settings):
+- Mode: NDI
+- NDI Send: CAMERA-1
+- NDI Receive: CONTROL-ROOM
+Dashboard: Intercom Group → 1
 ```
 
 **Result:** Bidirectional communication between Control Room and Camera
@@ -331,7 +325,9 @@ Starting from v1.5, intercom groups are **unified across NDI and ASIO modes**. T
 
 ### Group Configuration
 
-**Available Groups:**
+On the **main dashboard**, each channel card has **Intercom Group** buttons: **NONE**, **1**, **2**, **3**, **4**. The highlighted button is the active group.
+
+**Available groups:**
 - **Group 0**: NONE (channel is isolated)
 - **Group 1**: First intercom group
 - **Group 2**: Second intercom group
@@ -458,11 +454,11 @@ The plugin provides 4 action types:
   - Text shows: `CH [NUM]\n[GROUP NAME]`
   - Group names: NONE, GRP 1, GRP 2, GRP 3, GRP 4
 
-#### 4. Reset All
-- **Function**: Disable TALK and LISTEN on all channels
-- **Visual Feedback:**
-  - Shows checkmark (OK) when executed
-  - Text shows: `RESET\nALL`
+#### 4. Reset All (Stream Deck only)
+
+- **Function**: Disable TALK and LISTEN on **all** channels via the REST API
+- **Where**: Stream Deck plugin action only — **not** on the web dashboard
+- **Visual Feedback:** button text `RESET ALL`; state refresh follows the next poll from the server
 
 ### Configuration
 
@@ -614,13 +610,13 @@ Select output device:
 
 #### NDI Receive
 
-**How Discovery Works:**
-1. Application automatically searches for NDI sources on network
-2. Sources appear in "NDI Receive Source" dropdown
-3. Select desired source
-4. Enable "Enable NDI Receive"
+**How discovery works:**
 
-**NDI Troubleshooting:**
+1. The app polls for NDI sources on the network
+2. Sources appear in **Settings → Channels Configuration → NDI Receive**
+3. Select the desired source (or **None**)
+
+**Troubleshooting:**
 - If no sources appear: verify machines are on same subnet
 - Check firewall (port 5353 UDP for mDNS)
 - Verify switch supports multicast (IGMP snooping)
@@ -831,10 +827,9 @@ AUDIO Group (Group 2):
    - Button turns blue
    - Hear camera operator
 
-3. **Emergency silence:**
-   - Press RESET ALL button
-   - All TALK/LISTEN disabled
-   - All buttons turn dark
+3. **Silence all channels (Stream Deck):**
+   - Use a **Reset All** Stream Deck action (not available on the web dashboard)
+   - Clears TALK and LISTEN on every channel via the API
 
 4. **Change group:**
    - Press ROTATE GROUP button repeatedly
@@ -873,17 +868,17 @@ By default the web UI listens on **127.0.0.1 only** on the PC running Intercom. 
 **Solutions:**
 1. Verify output device is correct (Settings → Audio Devices)
 2. Check operating system volume (Windows sound mixer)
-3. Verify LISTEN is active (blue) on correct channel
-4. Check NDI source is active (green indicator on channel)
-5. Verify channel is in correct intercom group
+3. Verify LISTEN is active (**blue**) on the correct channel
+4. Check the channel’s **vertical NDI VU** moves when the remote party talks, and **NDI Receive** is set in Settings
+5. Verify the channel is in the correct intercom group
 
 #### Problem: Nobody can hear me
 
 **Solutions:**
 1. Verify microphone is selected correctly (Settings)
 2. Check VU Meter in header: should move when speaking
-3. Verify TALK is active (red) on channel
-4. Check NDI Send is enabled (Settings)
+3. Verify TALK is active (**red**) on the channel
+4. Confirm **NDI Send** is set in Settings for that channel
 5. Verify microphone isn't muted in Windows
 
 #### Problem: Feedback / Echo
