@@ -15,14 +15,11 @@ public class TrayApplicationContext : ApplicationContext
     private readonly int _port;
     private readonly WebServerBindingOptions _binding;
     private readonly WebApplication _webApp;
-    private readonly string _appSettingsPath;
-
     public TrayApplicationContext(WebApplication webApp, int port)
     {
         _webApp = webApp;
         _port = port;
-        _appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-        _binding = WebServerBindingOptions.FromAppsettingsFile(_appSettingsPath, port);
+        _binding = WebServerBindingOptions.LoadFromAppsettings(port);
 
         var contextMenu = new ContextMenuStrip();
 
@@ -121,7 +118,7 @@ public class TrayApplicationContext : ApplicationContext
 
     private void OnConfigureWebServer(object? sender, EventArgs e)
     {
-        var current = WebServerBindingOptions.FromAppsettingsFile(_appSettingsPath, _port);
+        var current = WebServerBindingOptions.LoadFromAppsettings(_port);
         var interfaces = WebServerBindingOptions.ListNetworkInterfaces();
 
         using var dialog = new Form
@@ -400,11 +397,13 @@ public class TrayApplicationContext : ApplicationContext
 
     private void SaveWebServerSettings(WebServerBindingOptions binding)
     {
-        JsonNode? root;
+        string userPath = AppSettingsPaths.UserSettingsPath;
+        Directory.CreateDirectory(AppSettingsPaths.UserSettingsDirectory);
 
-        if (File.Exists(_appSettingsPath))
+        JsonNode? root;
+        if (File.Exists(userPath))
         {
-            string json = File.ReadAllText(_appSettingsPath);
+            string json = File.ReadAllText(userPath);
             root = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
         }
         else
@@ -426,7 +425,22 @@ public class TrayApplicationContext : ApplicationContext
         binding.WriteTo(webServer, obj);
 
         var options = new JsonSerializerOptions { WriteIndented = true };
-        File.WriteAllText(_appSettingsPath, root.ToJsonString(options));
+        string finalPath = userPath;
+        string tempPath = finalPath + ".tmp";
+        try
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup of a stale temp file.
+        }
+
+        File.WriteAllText(tempPath, root.ToJsonString(options));
+        File.Move(tempPath, finalPath, overwrite: true);
     }
 
     private async void OnExit(object? sender, EventArgs e)

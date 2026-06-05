@@ -27,6 +27,16 @@ public sealed class WebServerBindingOptions
     public WebServerRemoteAccess RemoteAccess { get; init; } = WebServerRemoteAccess.Off;
     public string? BindAddress { get; init; }
 
+    public static WebServerBindingOptions LoadFromAppsettings(int defaultPort)
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile(AppSettingsPaths.InstallSettingsPath, optional: true)
+            .AddJsonFile(AppSettingsPaths.UserSettingsPath, optional: true)
+            .Build();
+        return FromConfiguration(configuration, defaultPort);
+    }
+
     public static WebServerBindingOptions FromConfiguration(IConfiguration configuration, int defaultPort)
     {
         int port = configuration.GetValue<int?>("WebServer:Port") ?? defaultPort;

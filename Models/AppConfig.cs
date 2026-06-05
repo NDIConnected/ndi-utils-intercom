@@ -9,21 +9,8 @@ namespace NDIIntercom.Models
         public string DeviceId { get; set; }
 
         /// <summary>
-        /// Controls the suffix appended to every NDI sender / receiver name.
-        /// Valid values (case-insensitive): "Full", "Compact", "Off".
-        ///
-        /// - <c>Full</c>:    "Channel 1 [app=Intercom_A;device=9f8c…;role=sender;ch=1]" — full
-        ///                  parsable identity in the name. Legacy / embedded NDI receivers may
-        ///                  reject names this complex (length, brackets, semicolons).
-        /// - <c>Compact</c>: "Channel 1 (Intercom_A)" — application id only, parentheses style
-        ///                  used by NDI tools. Maximum compatibility with all NDI clients while
-        ///                  still hinting which Intercom owns the source. <b>Default since v1.7.1.</b>
-        /// - <c>Off</c>:     "Channel 1" — pure friendly name, no identity hint. Use for legacy
-        ///                  receivers that fail with any extra characters.
-        ///
-        /// In every mode the &lt;ndi_manager&gt; connection metadata XML is unchanged, so a
-        /// management application that reads metadata can still aggregate instances by
-        /// (application_id, device_id) regardless of this setting.
+        /// Persisted for config compatibility; always forced to <c>Compact</c> at runtime.
+        /// NDI names use the form "Channel 1 (Intercom_A)".
         /// </summary>
         public string IdentitySuffixMode { get; set; } = "Compact";
 

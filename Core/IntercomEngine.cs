@@ -299,18 +299,15 @@ namespace NDIIntercom.Core
                 shouldPersistConfig = true;
             }
 
-            // Sanitize the NDI source name suffix mode (Full / Compact / Off). Unknown or
-            // missing values silently fall back to the default — preserves forward compat
-            // with older config.json files that don't have the field.
-            string normalizedSuffixMode = NDIManager.SanitizeSuffixMode(_config.IdentitySuffixMode);
-            if (!string.Equals(_config.IdentitySuffixMode, normalizedSuffixMode, StringComparison.Ordinal))
+            // NDI source names always use Compact suffix (not user-configurable).
+            if (!string.Equals(_config.IdentitySuffixMode, NDIManager.SuffixModeCompact, StringComparison.Ordinal))
             {
-                _config.IdentitySuffixMode = normalizedSuffixMode;
+                _config.IdentitySuffixMode = NDIManager.SuffixModeCompact;
                 shouldPersistConfig = true;
             }
 
             _ndiManager.SetIdentity(_config.ApplicationId, _config.DeviceId);
-            _ndiManager.SetSuffixMode(_config.IdentitySuffixMode);
+            _ndiManager.SetSuffixMode(NDIManager.SuffixModeCompact);
             config = _config;
 
             // Apply WDM/Pulse microphone & speaker (empty string = default device).

@@ -14,8 +14,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Web UI defaults to **localhost only**; config export/import confined to app data; CORS and `AllowedHosts` restricted by default.
 - NDI P/Invoke bool marshaling and UTF-8 string decoding fixes; XSS hardening in web UI; Linux audio subprocess argument validation.
 
+### Fixed
+- Tray **Web Server Settings** saves to `%ProgramData%\…\appsettings.json` (writable without admin); install-dir defaults remain read-only.
+- Installer completion page: shorter welcome/finish text so all content and the launch checkbox are visible.
+
 ### Changed
 - Installers use Inno `x64` architecture identifier and ship `INSTALLER-NOTICE.txt`.
+- Settings **Application Identity**: only **Application ID** in the UI; NDI source names always use **Compact** format (`Channel 1 (Intercom_A)`).
 
 ## [1.7.3] — 2026-05
 

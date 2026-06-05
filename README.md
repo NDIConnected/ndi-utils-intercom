@@ -104,11 +104,11 @@ dotnet publish "NDI Intercom2.csproj" -c Release -r win-x64 --self-contained tru
 - **Intercom16**: installs under `C:\Program Files\NDI\NDI Intercom16` (per installer script).
 - **Intercom2**: installs under `C:\Program Files\NDI\NDI Intercom2`.
 
-After install, use the **system tray** icon (hidden icons area) to open the web UI or open **Web Server Settings…** to change the HTTP port and allow control from other computers on the LAN (writes `appsettings.json` next to the executable; restart required). The web UI listens on **http://127.0.0.1:{port}** by default.
+After install, use the **system tray** icon (hidden icons area) to open the web UI or open **Web Server Settings…** to change the HTTP port and allow control from other computers on the LAN (writes `%ProgramData%\NDI Intercom16\appsettings.json`; restart required). The web UI listens on **http://127.0.0.1:{port}** by default.
 
 ### Network exposure
 
-The embedded Kestrel server defaults to **localhost only** for remote clients. **Localhost on this PC is always available** (`http://127.0.0.1:{port}`). To allow other PCs on the network, use the tray menu **Web Server Settings…** and choose a **selected network interface** (recommended on multi-NIC machines) or all interfaces (advanced). Alternatively set `WebServer:RemoteAccess` to `Interface` or `All` in `appsettings.json`. There is no authentication — restrict access with firewall rules or VPN on untrusted networks. See [SECURITY.md](SECURITY.md).
+The embedded Kestrel server defaults to **localhost only** for remote clients. **Localhost on this PC is always available** (`http://127.0.0.1:{port}`). To allow other PCs on the network, use the tray menu **Web Server Settings…** and choose a **selected network interface** (recommended on multi-NIC machines) or all interfaces (advanced). Alternatively set `WebServer:RemoteAccess` to `Interface` or `All` in `%ProgramData%\NDI Intercom16\appsettings.json` (or `%ProgramData%\NDI Intercom2\appsettings.json`). There is no authentication — restrict access with firewall rules or VPN on untrusted networks. See [SECURITY.md](SECURITY.md).
 
 ## Configuration
 

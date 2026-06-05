@@ -21,21 +21,7 @@
             <div class="settings-group">
                 <label>Application ID:</label>
                 <input type="text" id="applicationId" maxlength="64" placeholder="Intercom_A">
-                <small style="color: #888;">Valid chars: A-Z, a-z, 0-9, underscore (_), dot (.), hyphen (-). Length: 1-64.</small>
-            </div>
-            <div class="settings-group">
-                <label>NDI source name format:</label>
-                <select id="identitySuffixMode">
-                    <option value="Compact">Compact &mdash; "Channel 1 (Intercom_A)" (recommended; max NDI compatibility)</option>
-                    <option value="Full">Full &mdash; "Channel 1 [app=...;device=...;role=sender;ch=1]" (for management apps)</option>
-                    <option value="Off">Off &mdash; "Channel 1" (for legacy receivers that fail with extra characters)</option>
-                </select>
-                <small style="color: #888;">
-                    Some legacy or embedded NDI receivers reject names with brackets / semicolons / long suffixes.
-                    Switch to <b>Compact</b> or <b>Off</b> if subscribers fail to connect. The
-                    &lt;ndi_manager&gt; XML metadata is unchanged in every mode, so management
-                    applications that read connection metadata keep working.
-                </small>
+                <small style="color: #888;">Valid chars: A-Z, a-z, 0-9, underscore (_), dot (.), hyphen (-). Length: 1-64. NDI source names use the compact form, e.g. "Channel 1 (Intercom_A)".</small>
             </div>
         </div>
 

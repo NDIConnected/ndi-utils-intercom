@@ -123,16 +123,6 @@ async function loadSettings() {
             applicationIdInput.value = (config.applicationId || "Intercom_A").trim();
         }
 
-        // NDI source name suffix mode (Full / Compact / Off). Unknown / missing values
-        // default to "Compact" — same default as the server-side AppConfig sanitizer, so
-        // a fresh config and an upgraded one show the same value here.
-        const suffixModeSelect = document.getElementById("identitySuffixMode");
-        if (suffixModeSelect) {
-            const allowed = ["Full", "Compact", "Off"];
-            const v = (config.identitySuffixMode || "Compact").trim();
-            suffixModeSelect.value = allowed.includes(v) ? v : "Compact";
-        }
-
         populateAudioDevices();
         populateAsioDevices();
         populateNoiseGate();
@@ -451,21 +441,10 @@ async function applySettings() {
             return;
         }
 
-        // NDI source name suffix mode — read from the dropdown and clamp to a known value
-        // (the server-side sanitizer would reset an unexpected value to default, but doing
-        // it client-side keeps the round-trip clean).
-        const suffixModeSelect = document.getElementById("identitySuffixMode");
-        const allowedSuffixModes = ["Full", "Compact", "Off"];
-        let identitySuffixMode = (suffixModeSelect?.value || "Compact").trim();
-        if (!allowedSuffixModes.includes(identitySuffixMode)) {
-            identitySuffixMode = "Compact";
-        }
-
         // Build configuration object
         const asioSelectEl = document.getElementById("asioDeviceSelect");
         const newConfig = {
             applicationId: applicationId,
-            identitySuffixMode: identitySuffixMode,
             selectedMicrophone: document.getElementById("microphoneSelect").value,
             selectedSpeaker: document.getElementById("speakerSelect").value,
             selectedAsioDevice: productInfo.asioAvailable && asioSelectEl ? asioSelectEl.value : "",

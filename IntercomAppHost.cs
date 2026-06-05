@@ -30,13 +30,7 @@ public static class IntercomAppHost
         LinuxPulseCompat.EnsureRuntimeEnvironment();
 #endif
 
-        var configForPort = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: true)
-            .Build();
-
-        var webBinding = WebServerBindingOptions.FromConfiguration(
-            configForPort,
+        var webBinding = WebServerBindingOptions.LoadFromAppsettings(
             IntercomRuntime.Product.DefaultWebPort);
         int port = webBinding.Port;
 
@@ -45,6 +39,8 @@ public static class IntercomAppHost
             Args = args,
             ContentRootPath = AppContext.BaseDirectory
         });
+
+        builder.Configuration.AddJsonFile(AppSettingsPaths.UserSettingsPath, optional: true, reloadOnChange: false);
 
         // Persistent file logger — required for 24/7 troubleshooting. Lives next to the
         // per-product config directory (%ProgramData%\NDI Intercom16\logs on Windows,
