@@ -1,4 +1,8 @@
-# User Manual - NDI Intercom16
+# User Manual — NDI Intercom16 & NDI Intercom2
+
+> **Scope.** This manual describes **NDI Intercom16** (16 channels) in detail. **NDI Intercom2** (2 channels) uses the same web UI, tray workflow, and configuration model; differences are called out where they matter (default port **5017**, data folder `%ProgramData%\NDI Intercom2\`, no Stream Deck plugin in the installer).
+
+> **Sample software.** NDI Intercom is MIT-licensed reference software, not an officially supported production product. The web UI has **no authentication** and defaults to **localhost only**. See [SECURITY.md](../SECURITY.md) before enabling remote access.
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -31,7 +35,7 @@
 - **System Tray Application**: Runs silently in the notification area with quick-access menu
 - **Web Interface**: Complete control via web browser with real-time sync
 - **Stream Deck Integration**: Hardware control with Elgato Stream Deck
-- **Self-Contained**: No additional software installation required (.NET runtime included)
+- **Self-Contained**: .NET 8 runtime included in the installer (NDI Tools / NDI runtime must be installed separately)
 - **Persistent Configuration**: Settings are automatically saved
 - **Advanced Audio Processing**: Microphone noise gate with independent operation from NDI receive streams
 
@@ -79,9 +83,9 @@ Ideal for:
    - Choose installation folder (default: `C:\Program Files\NDI\NDI Intercom16`)
    - Optionally install the Stream Deck plugin
    - Installer will automatically copy all necessary dependencies (including .NET runtime and NDI libraries)
-4. At completion, click "Launch NDI Intercom16" or start it from the Start menu
+4. At completion, click **Launch NDI Intercom16** or start it from the Start menu
 
-> **Note:** The application is fully self-contained. No additional software installation (such as .NET Runtime) is required.
+> **Note:** The installer is self-contained for .NET. You must install **NDI Tools** (or the NDI runtime) separately on the target PC so NDI send/receive works.
 
 ### Installation Verification
 
@@ -105,29 +109,34 @@ The system tray icon is your main access point to the application. **Right-click
 
 ```
 ┌─────────────────────────────┐
-│  Open Web Interface         │  ← Opens the control page in your default browser
-│  ─────────────────────────  │
-│  Port: 5016          [Set]  │  ← Change the web server port
+│  Open Web Interface (5016)  │  ← Opens http://127.0.0.1:<port> in your browser
+│  Web Server Settings…       │  ← Port + optional remote access on a network interface
 │  ─────────────────────────  │
 │  Exit                       │  ← Closes the application
 └─────────────────────────────┘
 ```
 
-- **Open Web Interface**: Opens `http://localhost:<port>` in your default browser
-- **Port configuration**: Change the listening port (default: 5016). After changing, restart the application for the new port to take effect.
+- **Open Web Interface**: Opens `http://127.0.0.1:<port>` in your default browser (always works on the PC running Intercom)
+- **Web Server Settings…**: Change the HTTP port and optionally allow remote control from other PCs on the LAN (see [Remote Control](#remote-control)). **Restart required** after saving.
 - **Exit**: Completely shuts down the application
 
 ### 3. Access the Web Interface
 
-Right-click the tray icon and select **"Open Web Interface"**, or open a browser manually:
+Right-click the tray icon and select **Open Web Interface**, or open a browser manually on the **same PC**:
+
 ```
-http://localhost:5016
+http://127.0.0.1:5016
 ```
 
-From another computer on the same network:
+(Use port **5017** for NDI Intercom2.)
+
+**From another computer**, remote access is **disabled by default**. Enable it first via tray → **Web Server Settings…** → choose a network interface (recommended on multi-NIC machines) or all interfaces (advanced), then open:
+
 ```
 http://<server-ip-address>:5016
 ```
+
+Allow inbound TCP on that port in Windows Firewall if prompted.
 
 ### 4. Initial Configuration
 
@@ -714,6 +723,8 @@ You'll find this in the **Web Interface → Settings → Application Identity** 
 
 - **Device ID**: not displayed. It is auto-generated the first time the app starts and stored permanently in `config.json`. Treat it as an opaque identifier; you should not change it manually.
 
+- **NDI source names** always use the **Compact** format: `Channel 1 (Intercom_A)`. There is no UI option to change this; full identity metadata remains in the `<ndi_manager>` XML on each connection.
+
 ### How to set it
 
 1. Open the Web UI → **Settings**.
@@ -733,14 +744,14 @@ When you apply, NDI Intercom recreates all senders and receivers under the new i
 
 ### What you'll see in NDI tools
 
-In NDI Studio Monitor or any other NDI-compatible tool, your channels appear with the identity tag appended:
+In NDI Studio Monitor or any other NDI-compatible tool, your channels appear with the compact identity suffix:
 
 ```
-Channel 1 [app=Intercom_A;device=9f8c1d3a…;role=sender;ch=1]
-Intercom RX ch-3 [app=Intercom_A;device=9f8c1d3a…;role=receiver;ch=3]
+Channel 1 (Intercom_A)
+Intercom RX ch-3 (Intercom_A)
 ```
 
-NDI Studio Monitor also displays a **Web Control** link on each Intercom sender — clicking it opens the Settings UI for that specific Intercom instance, even from another machine on the network. This works thanks to the `<ndi_capabilities web_control="…">` metadata that NDI Intercom publishes automatically.
+NDI Studio Monitor also displays a **Web Control** link on each Intercom sender — clicking it opens the web UI for that specific Intercom instance when remote access is enabled. This works thanks to the `<ndi_capabilities web_control="…">` metadata that NDI Intercom publishes automatically.
 
 ### For developers / integrators
 
@@ -831,19 +842,25 @@ AUDIO Group (Group 2):
 
 ### Remote Control
 
-You can control intercom from any device on network:
+By default the web UI listens on **127.0.0.1 only** on the PC running Intercom. To control it from other devices on the network:
 
-1. **From network PC:**
-   - Browser → `http://<server-ip>:5016`
+1. **Enable remote access** (on the Intercom PC):
+   - Right-click the tray icon → **Web Server Settings…**
+   - Set the port if needed (default **5016** for Intercom16, **5017** for Intercom2)
+   - Choose **Enabled on selected network interface** (recommended) or **all interfaces** (advanced)
+   - Click **Save**, then **restart** the application
+   - Allow inbound TCP on that port in Windows Firewall
 
-2. **From tablet/smartphone:**
-   - Mobile browser → `http://<server-ip>:5016`
-   - Interface is responsive and touch-friendly
+2. **From another PC, tablet, or phone:**
+   - Browser → `http://<server-ip>:5016` (or your custom port)
+   - The interface is responsive and touch-friendly
 
-3. **Multi-User Access:**
-   - Multiple browsers/Stream Decks can connect simultaneously
-   - All interfaces stay synchronized in real-time
-   - Perfect for distributed control rooms
+3. **Multi-user access:**
+   - Multiple browsers or Stream Decks can connect at once
+   - All clients stay synchronized in real time via SignalR
+   - **No login** — use only on trusted LANs or behind a VPN
+
+> **Security:** Remote control exposes full intercom and settings access without authentication. Keep remote access disabled unless you need it. See [SECURITY.md](../SECURITY.md).
 
 ---
 
@@ -996,21 +1013,23 @@ You can control intercom from any device on network:
    New-Item -Path "$env:PROGRAMDATA\NDI Intercom16" -ItemType Directory -Force
    ```
 
-3. Check file permissions (user must have write access)
-4. Run application as Administrator (temporarily)
+3. Check file permissions (user must have write access to `%ProgramData%\NDI Intercom16\`)
+4. For **web server** settings (port / remote access), use tray **Web Server Settings…** — do not edit `appsettings.json` under `Program Files` (that folder is read-only)
 
 #### Problem: Browser doesn't connect
 
 **Solutions:**
 1. Verify application is running (check system tray icon is visible)
-2. Test port 5016 isn't occupied:
+2. On the **same PC**, use `http://127.0.0.1:5016` (not only `localhost` if you have multiple network adapters)
+3. From **another PC**, confirm remote access is enabled in tray → **Web Server Settings…** and the app was restarted
+4. Test port 5016 isn't occupied:
    ```powershell
    netstat -ano | findstr :5016
    ```
 
-3. Try clearing browser cache (Ctrl + Shift + Delete)
-4. Try different browser (Chrome, Firefox, Edge)
-5. Disable browser extensions
+5. Try clearing browser cache (Ctrl + Shift + Delete)
+6. Try different browser (Chrome, Firefox, Edge)
+7. Disable browser extensions
 
 ### Performance
 
@@ -1142,7 +1161,7 @@ A: Yes, via "NDI Send Name" field in channel settings.
 A: No, automatically saved in `%PROGRAMDATA%\NDI Intercom16\config.json`.
 
 **Q: Can I export/import configuration?**
-A: Yes, copy the `config.json` file to another computer.
+A: Yes. Use the export/import actions in the web UI (files are stored under `%ProgramData%\NDI Intercom16\Exports\`). You can also back up `config.json` manually.
 
 **Q: Can I have different saved configurations?**
 A: Manually copy/restore `config.json` files with different names.
@@ -1263,17 +1282,23 @@ Web Interface:
 
 ### File Locations
 
-**Configuration:**
-- `%PROGRAMDATA%\NDI Intercom16\config.json` - User configuration
+**User data (Intercom16):**
+- `%ProgramData%\NDI Intercom16\config.json` — channel, audio, and identity settings
+- `%ProgramData%\NDI Intercom16\appsettings.json` — web server port and remote bind (written by tray **Web Server Settings**)
+- `%ProgramData%\NDI Intercom16\logs\` — rolling application logs
+- `%ProgramData%\NDI Intercom16\Exports\` — config export/import folder
 
-**Installation:**
-- `C:\Program Files\NDI\NDI Intercom16\` - Application files (default)
+**User data (Intercom2):** same layout under `%ProgramData%\NDI Intercom2\` (default port **5017**).
 
-**Stream Deck Plugin:**
-- `%APPDATA%\Elgato\StreamDeck\Plugins\com.ndi.intercom16.sdPlugin\` - Plugin files
+**Installation (read-only after setup):**
+- `C:\Program Files\NDI\NDI Intercom16\` — application files (default)
+- `C:\Program Files\NDI\NDI Intercom2\` — Intercom2 install folder
 
-**NDI Runtime:**
-- `C:\Program Files\NDI\NDI 6 SDK\` - NDI libraries
+**Stream Deck plugin (Intercom16 installer option):**
+- `%APPDATA%\Elgato\StreamDeck\Plugins\com.ndi.intercom16.sdPlugin\`
+
+**NDI runtime (separate install):**
+- NDI Tools / NDI 6 runtime on the system (required for NDI audio on the network)
 
 ### Version History
 
@@ -1284,8 +1309,8 @@ Earlier milestones (ASIO support, NDI Bridge, desktop/tray app, unified intercom
 ---
 
 **Manual Version**: 1.7.4  
-**Date**: May 2026  
-**Application**: NDI Intercom16 v1.7.4
+**Date**: June 2026  
+**Application**: NDI Intercom16 & NDI Intercom2 v1.7.4
 
 ---
 
