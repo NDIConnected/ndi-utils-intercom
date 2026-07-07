@@ -29,7 +29,7 @@
 
 - **16 Full Duplex Channels**: Simultaneous bidirectional communication
 - **Unified Intercom Groups**: NDI and ASIO channels can participate in the same group with cross-mode N-1 mixing
-- **N-1 System**: Each channel sends its own mix excluding recipient return (prevents echo and feedback)
+- **N-1 System**: Each channel sends its own mix excluding the recipient's own return audio
 - **ASIO Support**: Professional audio routing with Dante Virtual Soundcard and ASIO devices
 - **NDI Bridge Integration**: Control NDI Bridge Host/Join/Local modes directly from Settings
 - **System Tray Application**: Runs silently in the notification area with quick-access menu
@@ -53,18 +53,27 @@ Ideal for:
 
 ### Minimum Requirements
 
+#### Windows desktop build
+
 - **Operating System**: Windows 10 (64-bit) or Windows 11
 - **Processor**: Intel Core i5 or equivalent AMD (i7 recommended)
 - **RAM**: 8 GB minimum (16 GB recommended)
 - **Network**: Gigabit Ethernet (1000 Mbps) for NDI streaming
 - **Audio Card**: WASAPI compatible audio devices (microphone + headphones/speakers)
 
+#### Linux headless build
+
+- **Operating System**: Linux x64 with .NET 8 runtime
+- **Audio backend**: PipeWire/PulseAudio with `parec`, `pacat`, and `pactl`
+- **NDI runtime**: NDI SDK for Linux with `libndi.so.6` available to the application
+- **Limitations**: no Windows tray app, no ASIO mode, and no Windows installer; control is via the web UI/API
+
 
 ### Optional Hardware
 
 - **Elgato Stream Deck** (any model) for hardware control
 - **Professional audio interface** for better audio quality
-- **ASIO-compatible audio interface** (Dante Virtual Soundcard, RME, Focusrite, etc.) for professional routing
+- **ASIO-compatible audio interface** (Dante Virtual Soundcard, RME, Focusrite, etc.) for professional routing on Windows
 
 ### Network Requirements
 
@@ -180,17 +189,17 @@ Assign **intercom groups** on the main dashboard (see [Intercom Groups](#interco
 The main dashboard has a **header** and a **grid of channel cards** (16 for Intercom16, 2 for Intercom2).
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────────────────┐
 │ [NDI] Intercom16    Input Level [====VU====]    💾 Save  📂 Load  Settings ⚙ │ ← Header
-├──────────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ... (up to 16 cards)     │
-│  │ Channel 1   │  │ Channel 2   │  │ Channel 3   │                          │
-│  │  [ TALK ]   │  │  [ TALK ]   │  │  [ TALK ]   │                          │
-│  │ [ LISTEN ]  │  │ [ LISTEN ]  │  │ [ LISTEN ]  │                          │
-│  │ In / Out    │  │ In / Out    │  │ In / Out    │  ← level knobs + NDI VU  │
-│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  ← intercom group        │
-│  └─────────────┘  └─────────────┘  └─────────────┘                          │
-└──────────────────────────────────────────────────────────────────────────────┘
+├───────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ... (up to 16 cards)      │
+│  │ Channel 1   │  │ Channel 2   │  │ Channel 3   │                            │
+│  │  [ TALK ]   │  │  [ TALK ]   │  │  [ TALK ]   │                            │
+│  │ [ LISTEN ]  │  │ [ LISTEN ]  │  │ [ LISTEN ]  │                            │
+│  │ In / Out    │  │ In / Out    │  │ In / Out    │  ← level knobs + NDI VU    │
+│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  │ NONE 1 2 3 4│  ← intercom group          │
+│  └─────────────┘  └─────────────┘  └─────────────┘                            │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 There is **no** global “Reset all channels” button on this page. Use per-channel **TALK** / **LISTEN**, or a **Stream Deck “Reset All”** action if you use the plugin.
@@ -583,14 +592,14 @@ Select input device:
 - Optimal level is -12 dB / -6 dB (green/yellow zone)
 - Avoid red zone (clipping/distortion)
 
-#### Output Device (Speakers)
+#### Output Device
 
 Select output device:
-- **Closed headphones** (highly recommended to avoid feedback)
+- **Closed headphones** (highly recommended to avoid acoustic echo/feedback risk)
 - **In-ear headphones**
-- ❌ **Open speakers** (not recommended: causes feedback)
+- **Open speakers / monitor speakers**: use only in controlled environments
 
-**Important:** Always use headphones in intercom systems to prevent audio feedback loops!
+**Important:** Headphones are strongly recommended for intercom use. Speakers do not automatically cause feedback, but they can create acoustic echo or a feedback loop when the local microphone picks up audio coming from the speakers and sends it back to the remote channel. The risk increases with high speaker level, open microphones, and close speaker-to-mic placement.
 
 ### NDI Configuration
 
@@ -671,13 +680,13 @@ Previously, the noise gate could be affected by audio from incoming NDI streams,
 
 ### Channels Feedback Gate
 
-The feedback gate prevents remote users from hearing themselves through your microphone when their audio is playing through your speakers.
+The feedback gate reduces the chance that remote users hear their own voice returning through your microphone when their audio is playing through local speakers.
 
 **How it works:**
 - Monitors audio received from each NDI channel
-- When a channel is transmitting audio to you, temporarily reduces your microphone output to that channel
-- Prevents acoustic feedback loops in open speaker environments
-- Does NOT affect N-1 mix (audio from other channels in the same group)
+- When a channel is transmitting audio to you, temporarily reduces your microphone output back to that same channel
+- Reduces acoustic echo and feedback risk in open-speaker environments
+- Does NOT replace N-1 mixing and does NOT affect audio from other channels in the same group
 
 **Parameters:**
 
@@ -700,7 +709,7 @@ Reduction: -60 dB
 - Open microphone environments
 - Preventing remote users from hearing themselves
 
-**Important:** This gate is separate from the Microphone Noise Gate and serves a different purpose.
+**Important:** This gate is separate from the Microphone Noise Gate and serves a different purpose. It is a mitigation for speaker-based setups, not a substitute for proper monitoring with headphones.
 
 ---
 
@@ -928,7 +937,7 @@ By default the web UI listens on **127.0.0.1 only** on the PC running Intercom. 
    ```powershell
    Get-Service "NDI Discovery Service"
    # Should show: Running
-
+   
    # If stopped:
    Start-Service "NDI Discovery Service"
    ```
@@ -1033,7 +1042,7 @@ By default the web UI listens on **127.0.0.1 only** on the PC running Intercom. 
 **Solutions:**
 1. Reduce number of active NDI channels
 2. Disable unused channels in Settings
-3. Use audio devices with native WASAPI drivers
+3. Use audio devices with reliable native drivers for the active backend (WASAPI/ASIO on Windows, PipeWire/PulseAudio on Linux)
 4. Close other applications
 5. Upgrade CPU (i7 or better recommended)
 
@@ -1063,7 +1072,7 @@ By default the web UI listens on **127.0.0.1 only** on the PC running Intercom. 
 A: Each instance supports 16 channels. You can run multiple instances on different computers for more channels.
 
 **Q: Can I use NDI Intercom on Mac or Linux?**
-A: No, currently Windows only (requires WASAPI and .NET 8.0 Windows-specific features).
+A: Windows is the primary desktop/installer target. Linux is available as a headless build with web UI/API control and PipeWire/PulseAudio audio; ASIO, the Windows tray app, and the Windows installer are not available on Linux. macOS is not currently supported.
 
 **Q: Do I need an NDI license?**
 A: No, NDI SDK is free for broadcast use. Download from https://ndi.video/tools/
@@ -1080,7 +1089,7 @@ A: No, Stream Deck is optional. The web interface provides full control.
 A: Adaptive buffering with 300ms NDI ring buffers and 200ms ASIO ring buffers for optimal stability and minimal dropouts. Total latency depends on mode: ~330ms for NDI mode, ~220ms for ASIO mode (including network latency).
 
 **Q: Can I use professional audio interfaces?**
-A: Yes! The system supports both WASAPI and ASIO audio interfaces. For professional routing with Dante Virtual Soundcard or other ASIO devices, use ASIO mode with N-1 routing and intercom groups.
+A: Yes. On Windows, the system supports WASAPI and ASIO audio interfaces. For professional routing with Dante Virtual Soundcard or other ASIO devices, use ASIO mode with N-1 routing and intercom groups. On Linux, local audio uses PipeWire/PulseAudio.
 
 **Q: Does it support stereo or multi-channel audio?**
 A: Currently mono only, which is standard for intercom systems.
@@ -1243,10 +1252,11 @@ Get-Service "NDI Discovery Service"
 
 - **ASIO**: Audio Stream Input/Output, low-latency audio driver standard for professional audio
 - **Cross-Mode Mixing**: Mixing audio between NDI and ASIO channels in the same intercom group
-- **N-1 (Minus One)**: System that excludes return audio to prevent feedback
+- **N-1 (Minus One)**: Mix-minus routing that excludes a destination's own return audio from the mix sent back to it
 - **NDI (Network Device Interface)**: Protocol for video/audio streaming over IP
 - **NDI Bridge**: NDI service for routing audio/video across network segments (Host/Join/Local modes)
 - **WASAPI**: Windows Audio Session API, Windows low-latency audio system
+- **PipeWire/PulseAudio**: Linux audio backend used by the headless build
 - **SignalR**: Framework for real-time web communication
 - **Full Duplex**: Simultaneous bidirectional communication
 - **VU Meter**: Volume Unit Meter, audio level indicator
