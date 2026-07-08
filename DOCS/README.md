@@ -17,4 +17,4 @@ Release history: [CHANGELOG.md](../CHANGELOG.md) in the repository root.
 
 Build, installers, and overview: [README.md](../README.md).
 
-Linux development notes are in the root README under **Linux build (experimental)**.
+Linux headless server notes are in the root README under **[Linux headless server build](../README.md#linux-headless-server-build)**.

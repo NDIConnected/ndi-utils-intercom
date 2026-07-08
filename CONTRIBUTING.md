@@ -6,7 +6,7 @@ Thank you for your interest in NDI Intercom.
 
 **Requirements**
 
-- Windows 10/11 x64 (primary target) or Linux (experimental)
+- Windows 10/11 x64 (**primary desktop target**, installer) or Linux x64 (**headless server**, build from source)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [NDI 6 SDK](https://ndi.video/) installed on the build machine
 - Optional: [Inno Setup 6](https://jrsoftware.org/isinfo.php) for Windows installers
