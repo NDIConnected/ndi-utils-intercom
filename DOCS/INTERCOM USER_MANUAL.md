@@ -15,9 +15,10 @@
 8. [Stream Deck Integration](#stream-deck-integration)
 9. [Audio and NDI Settings](#audio-and-ndi-settings)
 10. [Application Identity](#application-identity)
-11. [Daily Usage](#daily-usage)
-12. [Troubleshooting](#troubleshooting)
-13. [FAQ](#faq)
+11. [Bridge Service](#bridge-service)
+12. [Daily Usage](#daily-usage)
+13. [Troubleshooting](#troubleshooting)
+14. [FAQ](#faq)
 
 ---
 
@@ -73,7 +74,7 @@ Ideal for:
 
 - **Elgato Stream Deck** (any model) for hardware control
 - **Professional audio interface** for better audio quality
-- **ASIO-compatible audio interface** (Dante Virtual Soundcard, RME, Focusrite, etc.) for professional routing on Windows
+- **ASIO-compatible audio interface** for professional routing on Windows
 
 ### Network Requirements
 
@@ -527,26 +528,6 @@ You can now control NDI Intercom16 from a Stream Deck on a different computer:
 - Text updates to show ON/OFF status
 - No manual refresh needed
 
-### Typical Stream Deck Layout
-
-Example layout for control room operator:
-
-```
-┌──────┬──────┬──────┬──────┐
-│TALK  │TALK  │TALK  │RESET │
-│CH 1  │CH 2  │CH 3  │ ALL  │
-├──────┼──────┼──────┼──────┤
-│LISTEN│LISTEN│LISTEN│ROTATE│
-│CH 1  │CH 2  │CH 3  │GRP 1 │
-├──────┼──────┼──────┼──────┤
-│TALK  │TALK  │      │      │
-│CH 4  │CH 5  │      │      │
-├──────┼──────┼──────┼──────┤
-│LISTEN│LISTEN│      │      │
-│CH 4  │CH 5  │      │      │
-└──────┴──────┴──────┴──────┘
-```
-
 ### Troubleshooting Stream Deck
 
 #### Problem: Plugin doesn't appear in Stream Deck
@@ -763,6 +744,25 @@ NDI Studio Monitor also displays a **Web Control** link on each Intercom sender 
 If you are building a management or aggregation application that needs to consume this identity, the full specification (NDI source name grammar, `<ndi_manager>` XML schema, persistent receiver lifecycle, recommended consumption strategy) is in [IDENTITY-AWARE-ROUTING.md](IDENTITY-AWARE-ROUTING.md).
 
 ---
+
+## NDI Bridge Service
+
+Optional integration with an external **NDI Bridge Service** (separate Windows service with its own REST API, default `http://localhost:8080`).
+
+Enable this section only if you use NDI Bridge to extend NDI across WAN or between network segments.
+
+| Setting                                   | Description                                                  |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| **Enable NDI Bridge Service integration** | When off, the app does not contact the Bridge Service        |
+| **Bridge Service URL**                    | REST endpoint of the Bridge Service                          |
+| **Auto-start Mode**                       | `None`, `Host`, `Join`, or `Local` — applied when the Bridge Service restarts |
+| **Host**                                  | Expose local NDI sources to a remote bridge (name, port, groups, buffer, encryption key) |
+| **Join**                                  | Connect to a remote bridge host (name, IP, port, groups, buffer, encryption key) |
+| **Local**                                 | Local bridging configuration (name, groups)                  |
+
+Click **Test Connection** to verify the Bridge Service URL before saving. Settings are pushed to the Bridge Service on save and again at application startup.
+
+
 
 ## Daily Usage
 
