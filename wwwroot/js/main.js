@@ -249,19 +249,10 @@ function initializeKnobs() {
         let isDragging = false;
         let startY = 0;
         let startValue = 0;
+        let activePointerId = null;
 
-        knob.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            knob.dataset.dragging = 'true'; // Mark as being dragged
-            startY = e.clientY;
-            startValue = parseInt(knob.dataset.value);
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', async (e) => {
-            if (!isDragging) return;
-
-            const deltaY = startY - e.clientY;
+        const updateLevel = async (clientY) => {
+            const deltaY = startY - clientY;
             let newValue = startValue + Math.round(deltaY / 2);
             newValue = Math.max(0, Math.min(100, newValue));
 
@@ -271,7 +262,6 @@ function initializeKnobs() {
 
             const valueDisplay = knob.parentElement.querySelector('.level-value');
             if (!valueDisplay) {
-                // Handle case where level-value is not a sibling (input knob)
                 const parent = knob.closest('.level-control');
                 if (parent) {
                     const levelValue = parent.querySelector('.level-value');
@@ -295,14 +285,35 @@ function initializeKnobs() {
             } catch (err) {
                 // Silently continue
             }
+        };
+
+        knob.addEventListener('pointerdown', (e) => {
+            activePointerId = e.pointerId;
+            knob.setPointerCapture(activePointerId);
+            isDragging = true;
+            knob.dataset.dragging = 'true';
+            startY = e.clientY;
+            startValue = parseInt(knob.dataset.value, 10);
+            e.preventDefault();
         });
 
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                knob.dataset.dragging = ''; // Clear dragging flag
-            }
+        knob.addEventListener('pointermove', (e) => {
+            if (!isDragging || e.pointerId !== activePointerId) return;
+            updateLevel(e.clientY);
         });
+
+        const endDrag = (e) => {
+            if (e.pointerId !== activePointerId) return;
+            isDragging = false;
+            activePointerId = null;
+            knob.dataset.dragging = '';
+            if (knob.hasPointerCapture(e.pointerId)) {
+                knob.releasePointerCapture(e.pointerId);
+            }
+        };
+
+        knob.addEventListener('pointerup', endDrag);
+        knob.addEventListener('pointercancel', endDrag);
     });
 }
 

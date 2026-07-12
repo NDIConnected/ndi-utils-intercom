@@ -4,6 +4,11 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.5] — 2026-07
+
+### Fixed
+- Web UI input/output volume knobs now work on touch screens (Pointer Events + `touch-action: none`).
+
 ## [1.7.4] — 2026-06
 
 ### Added
