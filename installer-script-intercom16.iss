@@ -53,6 +53,7 @@ Source: "{#SourcePath}\wwwroot\*"; DestDir: "{app}\wwwroot"; Flags: ignoreversio
 Source: "{#SourcePath}\INSTALLER-NOTICE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\THIRD-PARTY-LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}\Processing.NDI.Lib.Licenses.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\INTERCOM USER_MANUAL.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\API_REST_GUIDE.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "{#SourcePath}\DOCS\STREAMDECK_PLUGIN_GUIDE.md"; DestDir: "{app}\Documentation"; Flags: ignoreversion
@@ -78,7 +79,7 @@ Type: filesandordirs; Name: "{%APPDATA}\Elgato\StreamDeck\Plugins\com.ndi.interc
 WelcomeLabel2=This will install [name/ver] on your computer.%n%nNDI Intercom16 is a 16-channel NDI intercom with web control, optional ASIO, and NDI Bridge integration.%n%nVersion 1.7.5:%n- Web UI volume knobs now work on touch screens%n%nSee CHANGELOG.md in the repo or Documentation after install for full release notes.%n%nSelf-contained .NET 8 app — NDI Runtime must be installed separately.
 
 FinishedHeadingLabel=Setup Completed Successfully!
-FinishedLabel=[name] is installed and runs in the system tray.%n%nRight-click the tray icon to open the web UI.%n%nLocal access: http://127.0.0.1:5016%nRemote control: tray → Web Server Settings%n%nConfiguration: %ProgramData%\NDI Intercom16\%nDocumentation and licenses are in the install folder.
+FinishedLabel=[name] is installed and runs in the system tray.%n%nRight-click the tray icon to open the web UI.%n%nLocal access: http://127.0.0.1:5016%nRemote control: tray → Web Server Settings%n%nConfiguration: %ProgramData%\NDI Intercom16\%nDocumentation and licenses (including Processing.NDI.Lib.Licenses.txt) are in the install folder.
 
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules"; ValueType: string; ValueName: "NDI Intercom16"; ValueData: "v2.26|Action=Allow|Active=TRUE|Dir=In|Protocol=6|LPort=5016|App={app}\{#MyAppExeName}|Name=NDI Intercom16|"; Flags: uninsdeletevalue

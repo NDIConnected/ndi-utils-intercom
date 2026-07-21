@@ -4,6 +4,14 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- `Processing.NDI.Lib.Licenses.txt` (NDI SDK third-party notices: RapidJSON, SpeexDSP, RapidXML, etc.) shipped with both Windows installers alongside the NDI runtime DLL.
+
+### Changed
+- `THIRD-PARTY-LICENSES.txt` and `INSTALLER-NOTICE.txt` reference the NDI SDK license URL (`http://ndi.link/ndisdk_license`) and `Processing.NDI.Lib.Licenses.txt`.
+
 ## [1.7.5] — 2026-07
 
 ### Fixed

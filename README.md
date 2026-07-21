@@ -179,6 +179,6 @@ See [ARCHITECTURE.md](DOCS/ARCHITECTURE.md) for components, audio pipeline, and 
 
 MIT License — Copyright (c) 2026 Vizrt NDI AB. See [LICENSE](LICENSE).
 
-Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt). The NDI logo and NDI® trademark are **not** covered by MIT; see that file for redistribution and trademark notes.
+Third-party components are listed in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt). When redistributing the NDI runtime DLL, also include [Processing.NDI.Lib.Licenses.txt](Processing.NDI.Lib.Licenses.txt) (NDI SDK third-party notices). The NDI logo and NDI® trademark are **not** covered by MIT; see those files for redistribution and trademark notes.
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Security: [SECURITY.md](SECURITY.md).

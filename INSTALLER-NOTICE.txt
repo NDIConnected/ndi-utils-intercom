@@ -7,7 +7,11 @@ for the NDI Intercom application source code.
 By continuing, you acknowledge that use of the NDI SDK runtime is subject to the
 NDI SDK license terms published by Vizrt NDI AB:
 
-  https://ndi.video
+  http://ndi.link/ndisdk_license
+
+Third-party notices for libraries included in the NDI runtime (RapidJSON,
+SpeexDSP, RapidXML, and others) are in Processing.NDI.Lib.Licenses.txt in the
+installation folder.
 
 NDI(R) is a registered trademark of Vizrt NDI AB. The NDI logo and NDI name are
 trademarks of Vizrt NDI AB and are not licensed under MIT.

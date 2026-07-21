@@ -106,12 +106,19 @@ SOFTWARE.
    Copyright (c) Vizrt NDI AB
    Proprietary License
    Source: https://ndi.video
+   NDI SDK license: http://ndi.link/ndisdk_license
 
 --------------------------------------------------------------------------------
 
-This application is developed by Vizrt NDI AB. The NDI SDK runtime is subject to
-the NDI SDK license terms from https://ndi.video (separate from the MIT license
-for NDI Intercom application code).
+This application is developed by Vizrt NDI AB. The NDI SDK runtime
+(Processing.NDI.Lib.x64.dll / libndi.so*) is subject to the NDI SDK license
+terms (separate from the MIT license for NDI Intercom application code).
+
+Full NDI SDK license text, copyright notices for third-party libraries
+bundled inside the NDI runtime (RapidJSON, SpeexDSP, RapidXML, CxxUrl,
+ASIO, MsQuic, Opus, and others), and links to the online NDI license are
+in Processing.NDI.Lib.Licenses.txt. That file must accompany any
+redistribution of the NDI binary, as required by the NDI SDK.
 
 NDI® is a registered trademark of Vizrt NDI AB.
 
@@ -165,9 +172,11 @@ NDI REDISTRIBUTION & TRADEMARK (for installers and forks)
 
 - Installers built from this repository may bundle Processing.NDI.Lib.x64.dll
   (Windows) or libndi.so* (Linux). That native runtime is **not** MIT-licensed;
-  it is subject to the NDI SDK license from https://ndi.video
+  it is subject to the NDI SDK license (http://ndi.link/ndisdk_license). Ship
+  Processing.NDI.Lib.Licenses.txt with the NDI binary.
 - Forks that ship installers inherit the obligation to include NDI SDK
-  attribution and forward the NDI EULA/terms to end users
+  attribution, Processing.NDI.Lib.Licenses.txt, and forward the NDI EULA/terms
+  to end users
 - NDI® is a registered trademark of Vizrt NDI AB. Use of the name and logo
   requires compliance with Vizrt trademark guidelines
 - wwwroot/ndi-logo.png is the NDI brand mark, used with permission in this
@@ -205,7 +214,7 @@ copyright holders directly.
 ================================================================================
 
 This document applies to NDI Intercom16 / NDI Intercom2 v1.7.5
-Last updated: June 2026
+Last updated: July 2026
 
 Copyright (c) 2026 Vizrt NDI AB
 NDI Intercom is MIT-licensed application software — see LICENSE
