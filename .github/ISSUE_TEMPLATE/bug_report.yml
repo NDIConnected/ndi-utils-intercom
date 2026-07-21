@@ -24,8 +24,8 @@ body:
     id: version
     attributes:
       label: Version
-      description: e.g. 1.7.3 from About / installer / `/healthz`
-      placeholder: "1.7.3"
+      description: e.g. 1.7.6 from About / installer / `/healthz`
+      placeholder: "1.7.6"
     validations:
       required: true
 
