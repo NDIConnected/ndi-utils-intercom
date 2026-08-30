@@ -334,12 +334,16 @@ body {
 
 /* Channel Card */
 .channel-card {
-    background: rgba(54, 54, 54, 0.8);
+    background: #333333;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+}
+
+.channel-card.ndi-source-lost {
+    background: #673131;
 }
 
 .channel-card:hover {

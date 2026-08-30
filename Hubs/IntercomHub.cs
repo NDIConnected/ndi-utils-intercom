@@ -27,6 +27,7 @@ namespace NDIIntercom.Hubs
             {
                 channel.TalkEnabled = !channel.TalkEnabled;
                 _intercomEngine.UpdateAsioChannelStates();
+                _intercomEngine.SaveCurrentConfiguration();
                 await Clients.All.SendAsync("ChannelUpdated", channel);
             }
         }
@@ -39,6 +40,7 @@ namespace NDIIntercom.Hubs
             {
                 channel.ListenEnabled = !channel.ListenEnabled;
                 _intercomEngine.UpdateAsioChannelStates();
+                _intercomEngine.SaveCurrentConfiguration();
                 await Clients.All.SendAsync("ChannelUpdated", channel);
             }
         }

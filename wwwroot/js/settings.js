@@ -465,11 +465,20 @@ async function applySettings() {
             channels: []
         };
 
+        // Live Talk/Listen (not edited on this page) so Apply does not wipe button state.
+        let liveChannels = [];
+        try {
+            liveChannels = await connection.invoke("GetChannels") || [];
+        } catch (_) {
+            liveChannels = [];
+        }
+
         // Collect channel configuration (NDI + ASIO)
         for (let i = 1; i <= maxIntercomChannels; i++) {
             const channelConfig = config.channels && config.channels[i - 1]
                 ? config.channels[i - 1]
                 : {};
+            const live = liveChannels[i - 1] || {};
 
             const modeEl = document.getElementById(`channelMode${i}`);
             const channelMode = productInfo.asioAvailable
@@ -484,6 +493,8 @@ async function applySettings() {
                 label: channelConfig.label || `Channel ${i}`,
                 inputLevel: channelConfig.inputLevel ?? 100,
                 outputLevel: channelConfig.outputLevel ?? 100,
+                talkEnabled: live.talkEnabled ?? channelConfig.talkEnabled ?? false,
+                listenEnabled: live.listenEnabled ?? channelConfig.listenEnabled ?? false,
                 intercomGroup: channelConfig.intercomGroup ?? channelConfig.ndiIntercomGroup ?? channelConfig.asioIntercomGroup ?? 0,
                 ndiSendName: document.getElementById(`ndiSend${i}`).value,
                 ndiReceiveName: channelMode === 0 ? document.getElementById(`ndiReceive${i}`).value : (channelConfig.ndiReceiveName || ""),

@@ -4,6 +4,12 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.9] — 2026-08
+
+### Added
+- Persist **Talk** and **Listen** per channel in `config.json` and restore them on restart (UI, REST, and Stream Deck toggles).
+- NDI receive warning in the web UI: channel card background `#673131` when a configured NDI source is not connected (normal `#333333`).
+
 ## [1.7.8] — 2026-08
 
 ### Fixed

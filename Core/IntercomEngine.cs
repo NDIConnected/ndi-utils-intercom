@@ -507,6 +507,18 @@ namespace NDIIntercom.Core
                     channelState.NdiSendName = channelConfig.NdiSendName;
                     channelState.NdiReceiveName = channelConfig.NdiReceiveName;
 
+                    // Restore Talk/Listen when present (startup / import). When absent
+                    // (older configs, Settings Apply that only touches routing), keep live state.
+                    if (channelConfig.TalkEnabled.HasValue)
+                    {
+                        channelState.TalkEnabled = channelConfig.TalkEnabled.Value;
+                    }
+
+                    if (channelConfig.ListenEnabled.HasValue)
+                    {
+                        channelState.ListenEnabled = channelConfig.ListenEnabled.Value;
+                    }
+
                     // Only create senders once at startup
                     if (!_sendersCreated)
                     {
@@ -922,6 +934,8 @@ namespace NDIIntercom.Core
                     Label = channel.Label,
                     InputLevel = channel.InputLevel,
                     OutputLevel = channel.OutputLevel,
+                    TalkEnabled = channel.TalkEnabled,
+                    ListenEnabled = channel.ListenEnabled,
                     Mode = (int)channel.Mode,
                     IntercomGroup = channel.IntercomGroup,
                     AsioInputChannel = channel.AsioInputChannel,

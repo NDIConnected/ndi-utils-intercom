@@ -47,6 +47,7 @@ namespace NDIIntercom.Controllers
 
             channel.TalkEnabled = !channel.TalkEnabled;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, talkEnabled = channel.TalkEnabled });
         }
@@ -61,6 +62,7 @@ namespace NDIIntercom.Controllers
 
             channel.TalkEnabled = true;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, talkEnabled = channel.TalkEnabled });
         }
@@ -75,6 +77,7 @@ namespace NDIIntercom.Controllers
 
             channel.TalkEnabled = false;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, talkEnabled = channel.TalkEnabled });
         }
@@ -89,6 +92,7 @@ namespace NDIIntercom.Controllers
 
             channel.ListenEnabled = !channel.ListenEnabled;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, listenEnabled = channel.ListenEnabled });
         }
@@ -103,6 +107,7 @@ namespace NDIIntercom.Controllers
 
             channel.ListenEnabled = true;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, listenEnabled = channel.ListenEnabled });
         }
@@ -117,6 +122,7 @@ namespace NDIIntercom.Controllers
 
             channel.ListenEnabled = false;
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
             await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             return Ok(new { channelNumber, listenEnabled = channel.ListenEnabled });
         }
@@ -166,6 +172,7 @@ namespace NDIIntercom.Controllers
                 await _hubContext.Clients.All.SendAsync("ChannelUpdated", channel);
             }
             _intercomEngine.UpdateAsioChannelStates();
+            _intercomEngine.SaveCurrentConfiguration();
 
             return Ok(new { message = "All channels reset" });
         }

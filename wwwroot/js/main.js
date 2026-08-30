@@ -15,6 +15,8 @@ function escapeHtml(value) {
 
 let channels = [];
 let maxIntercomChannels = 16;
+let receiverStatusByChannel = {};
+let receiverStatusTimer = null;
 
 // Track last NDI level update for each channel (for timeout detection)
 const ndiLevelTimestamps = {};
@@ -33,6 +35,7 @@ async function startConnection() {
             titleEl.textContent = product.uiTitleShort;
         }
         await loadChannels();
+        startReceiverStatusPolling();
     } catch (err) {
         setTimeout(startConnection, 5000);
     }
@@ -43,9 +46,77 @@ async function loadChannels() {
     try {
         channels = await connection.invoke("GetChannels");
         renderChannels();
+        await refreshReceiverStatuses();
     } catch (err) {
         // Silently continue
     }
+}
+
+function isNdiMode(channel) {
+    const mode = channel?.mode;
+    return mode === 0 || mode === "NDI" || mode === "ndi";
+}
+
+function channelHasConfiguredNdiSource(channel, status) {
+    const fromStatus = (status?.configuredSource || "").trim();
+    if (fromStatus) {
+        return true;
+    }
+    return !!(channel?.ndiReceiveName || "").trim();
+}
+
+function shouldWarnNdiSourceLost(channel, status) {
+    if (!channel || !isNdiMode(channel)) {
+        return false;
+    }
+    if (!channelHasConfiguredNdiSource(channel, status)) {
+        return false;
+    }
+    if (status && typeof status.isConnected === "boolean") {
+        return !status.isConnected;
+    }
+    return channel.isConnected === false;
+}
+
+function applyNdiSourceLostClass(card, channel, status) {
+    if (!card) {
+        return;
+    }
+    card.classList.toggle("ndi-source-lost", shouldWarnNdiSourceLost(channel, status));
+}
+
+function applyAllNdiSourceLostClasses() {
+    const cards = document.querySelectorAll(".channel-card");
+    cards.forEach(card => {
+        const channelNumber = parseInt(card.dataset.channelNumber, 10);
+        const channel = channels.find(c => c.channelNumber === channelNumber);
+        const status = receiverStatusByChannel[channelNumber];
+        applyNdiSourceLostClass(card, channel, status);
+    });
+}
+
+async function refreshReceiverStatuses() {
+    try {
+        const statuses = await connection.invoke("GetReceiverStatuses");
+        receiverStatusByChannel = {};
+        (statuses || []).forEach(status => {
+            receiverStatusByChannel[status.channelNumber] = status;
+        });
+        applyAllNdiSourceLostClasses();
+    } catch (err) {
+        // Silently continue
+    }
+}
+
+function startReceiverStatusPolling() {
+    if (receiverStatusTimer) {
+        clearInterval(receiverStatusTimer);
+    }
+    receiverStatusTimer = setInterval(() => {
+        if (connection.state === signalR.HubConnectionState.Connected) {
+            refreshReceiverStatuses();
+        }
+    }, 1500);
 }
 
 // Render channels grid
@@ -59,6 +130,8 @@ function renderChannels() {
     channels.forEach(channel => {
         const card = document.createElement("div");
         card.className = "channel-card";
+        card.dataset.channelNumber = String(channel.channelNumber);
+        applyNdiSourceLostClass(card, channel, receiverStatusByChannel[channel.channelNumber]);
         card.innerHTML = `
             <div class="channel-header" onclick="editChannelLabel(${channel.channelNumber})">
                 ${escapeHtml(channel.label || "Channel " + channel.channelNumber)}
@@ -177,6 +250,8 @@ function updateChannelUI(channel) {
     const cards = document.querySelectorAll('.channel-card');
     const card = cards[channel.channelNumber - 1]; // 0-indexed
     if (!card) return;
+
+    applyNdiSourceLostClass(card, channel, receiverStatusByChannel[channel.channelNumber]);
 
     // Update TALK button
     const talkBtn = card.querySelector('.btn-talk');
@@ -393,6 +468,7 @@ connection.onreconnecting(() => {
 
 connection.onreconnected(() => {
     loadChannels();
+    startReceiverStatusPolling();
 });
 
 connection.onclose(() => {

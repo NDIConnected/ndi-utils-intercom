@@ -85,6 +85,15 @@ namespace NDIIntercom.Models
         public int InputLevel { get; set; }
         public int OutputLevel { get; set; }
 
+        /// <summary>
+        /// Persisted Talk/Listen so a restart restores the operator's last button state.
+        /// Nullable: missing in older configs / Settings Apply payloads means "leave live state alone".
+        /// </summary>
+        public bool? TalkEnabled { get; set; }
+
+        /// <inheritdoc cref="TalkEnabled"/>
+        public bool? ListenEnabled { get; set; }
+
         // Mode: NDI or ASIO
         public int Mode { get; set; } = 0; // 0=NDI, 1=ASIO (using int for JSON compatibility)
 
