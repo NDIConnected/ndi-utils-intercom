@@ -85,7 +85,7 @@ function renderChannels() {
                              data-channel="${channel.channelNumber}"
                              data-type="input"
                              data-value="${channel.inputLevel}"
-                             style="transform: rotate(${(channel.inputLevel - 100) * 2.7}deg)">
+                             style="transform: rotate(${knobRotationDegrees(channel.inputLevel, 'input')}deg)">
                         </div>
                     </div>
                     <div class="level-value input">${channel.inputLevel}</div>
@@ -222,7 +222,7 @@ function updateChannelUI(channel) {
     const inputKnob = card.querySelector('.level-knob.input');
     if (inputKnob && !inputKnob.dataset.dragging) {
         inputKnob.dataset.value = channel.inputLevel;
-        inputKnob.style.transform = `rotate(${(channel.inputLevel - 100) * 2.7}deg)`;
+        inputKnob.style.transform = `rotate(${knobRotationDegrees(channel.inputLevel, 'input')}deg)`;
         const inputValue = card.querySelector('.level-value.input');
         if (inputValue) {
             inputValue.textContent = channel.inputLevel;
@@ -233,12 +233,27 @@ function updateChannelUI(channel) {
     const outputKnob = card.querySelector('.level-knob.output');
     if (outputKnob && !outputKnob.dataset.dragging) {
         outputKnob.dataset.value = channel.outputLevel;
-        outputKnob.style.transform = `rotate(${(channel.outputLevel - 100) * 2.7}deg)`;
+        outputKnob.style.transform = `rotate(${knobRotationDegrees(channel.outputLevel, 'output')}deg)`;
         const outputValue = card.querySelector('.level-value.output');
         if (outputValue) {
             outputValue.textContent = channel.outputLevel;
         }
     }
+}
+
+/**
+ * Knob rotation: Input 0=mute (left), 100=unity (center), 300=3× (right).
+ * Output keeps legacy 0–100 mapping (unity at max / center).
+ */
+function knobRotationDegrees(value, type) {
+    const v = Number(value) || 0;
+    if (type === 'input') {
+        if (v <= 100) {
+            return ((v - 100) / 100) * 135;
+        }
+        return ((v - 100) / 200) * 135;
+    }
+    return (v - 100) * 2.7;
 }
 
 // Initialize knob controls
@@ -252,13 +267,14 @@ function initializeKnobs() {
         let activePointerId = null;
 
         const updateLevel = async (clientY) => {
+            const type = knob.dataset.type;
+            const max = type === 'input' ? 300 : 100;
             const deltaY = startY - clientY;
             let newValue = startValue + Math.round(deltaY / 2);
-            newValue = Math.max(0, Math.min(100, newValue));
+            newValue = Math.max(0, Math.min(max, newValue));
 
             knob.dataset.value = newValue;
-            const rotation = (newValue - 100) * 2.7;
-            knob.style.transform = `rotate(${rotation}deg)`;
+            knob.style.transform = `rotate(${knobRotationDegrees(newValue, type)}deg)`;
 
             const valueDisplay = knob.parentElement.querySelector('.level-value');
             if (!valueDisplay) {
@@ -274,7 +290,6 @@ function initializeKnobs() {
             }
 
             const channelNumber = parseInt(knob.dataset.channel);
-            const type = knob.dataset.type;
 
             try {
                 if (type === 'input') {

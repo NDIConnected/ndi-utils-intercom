@@ -158,13 +158,17 @@ public static class IntercomAppHost
         {
             try
             {
-                if (!intercomEngine.Initialize(port))
+                // Load the config *before* initializing NDI so senders and receivers are
+                // created with their final identity, instead of being recreated as soon as
+                // the first ApplyConfig lands.
+                var savedConfig = ConfigManager.LoadConfig();
+
+                if (!intercomEngine.Initialize(port, savedConfig))
                 {
                     startupLogger.LogCritical("IntercomEngine.Initialize returned false. Audio is non-functional. Investigate the NDI runtime / SDK installation.");
                     return;
                 }
 
-                var savedConfig = ConfigManager.LoadConfig();
                 if (savedConfig != null && savedConfig.Channels != null && savedConfig.Channels.Count > 0)
                 {
                     intercomEngine.ApplyConfig(savedConfig, false);
@@ -197,15 +201,25 @@ public static class IntercomAppHost
         {
             bool initialized = engine.IsInitialized;
             bool running = engine.IsRunning;
+
+            // Receiver counts make an all-silent intercom visible: the engine can be
+            // initialized and running while every configured NDI source is unresolved, which
+            // is exactly the failure that used to require a manual Settings→Apply.
+            var (configuredReceivers, connectedReceivers) = engine.GetNdiReceiverHealth();
+            bool receiversOk = connectedReceivers == configuredReceivers;
+            bool healthy = initialized && running && receiversOk;
+
             var payload = new
             {
                 product = IntercomRuntime.Product.ProductDisplayName,
                 version = typeof(IntercomAppHost).Assembly.GetName().Version?.ToString() ?? "unknown",
                 initialized,
                 running,
-                healthy = initialized && running,
+                configuredReceivers,
+                connectedReceivers,
+                healthy,
             };
-            return Results.Json(payload, statusCode: (initialized && running) ? 200 : 503);
+            return Results.Json(payload, statusCode: healthy ? 200 : 503);
         });
 
 #if WINDOWS

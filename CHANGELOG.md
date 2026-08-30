@@ -4,6 +4,19 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.7] — 2026-08
+
+### Fixed
+- NDI receive after restart: load identity/config before creating receivers, and reconnect unresolved sources via a watchdog (uses `NDIlib_recv_get_no_connections` when available) so audio no longer stays silent until Settings → Apply.
+- ASIO init retries: multiple attempts on cold start only; a single attempt on interactive Apply so the UI does not freeze for ~14s.
+
+### Added
+- `GET /healthz` reports `configuredReceivers` / `connectedReceivers` and returns 503 when configured sources are not connected.
+- `GetReceiverStatuses` / `NDIReceiverStatus` for per-channel configured vs connected receive state.
+
+### Changed
+- **Input Level** knob: center = unity (100%), left = mute (0%), right = boost up to 300% (3×). Hard clip after gain to avoid overflow.
+
 ## [1.7.6] — 2026-07
 
 ### Added

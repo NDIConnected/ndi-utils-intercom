@@ -19,6 +19,7 @@ namespace NDIIntercom.Models
         public string Label { get; set; }
         public bool TalkEnabled { get; set; }
         public bool ListenEnabled { get; set; }
+        /// <summary>Receive gain percent: 0 = mute, 100 = unity, up to 300 = 3× boost.</summary>
         public int InputLevel { get; set; } = 100;
         public int OutputLevel { get; set; } = 100;
 

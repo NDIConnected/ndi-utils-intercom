@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace NDIIntercom.Core
 {
@@ -197,6 +198,14 @@ namespace NDIIntercom.Core
 
         [DllImport(NDI_LIB, EntryPoint = "NDIlib_recv_connect", CallingConvention = CallingConvention.Cdecl)]
         public static extern void NDIlib_recv_connect(IntPtr p_instance, ref NDIlib_source_t p_src);
+
+        // Number of senders this receiver is currently connected to (0 = not connected).
+        // This is the only reliable liveness signal for an intercom receiver: a peer with
+        // TALK off legitimately sends no audio frames at all, so "no frames arrived" must
+        // NOT be read as "connection lost". Guard calls with HasRecvConnectionCount —
+        // the export is absent from some older/embedded NDI runtimes.
+        [DllImport(NDI_LIB, EntryPoint = "NDIlib_recv_get_no_connections", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int NDIlib_recv_get_no_connections(IntPtr p_instance, uint timeout_in_ms);
 
         [DllImport(NDI_LIB, EntryPoint = "NDIlib_recv_capture_v3", CallingConvention = CallingConvention.Cdecl)]
         public static extern NDIlib_frame_type_e NDIlib_recv_capture_v3(
@@ -461,6 +470,55 @@ namespace NDIIntercom.Core
                 string sdkTree = System.IO.Path.Combine(home, "SDK", "NDI_SDK_for_Linux", "lib", arch, NDI_LIB);
                 return System.IO.File.Exists(sdkTree);
 #endif
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Tri-state cache: -1 = not probed, 0 = absent, 1 = present.
+        private static int _hasRecvConnectionCount = -1;
+
+        /// <summary>
+        /// True when the loaded NDI runtime exports NDIlib_recv_get_no_connections.
+        /// Probed once, lazily. When false, callers must fall back to a degraded path
+        /// rather than P/Invoking it (a missing export throws EntryPointNotFoundException
+        /// on first call, which would surface on the audio/watchdog thread).
+        /// </summary>
+        public static bool HasRecvConnectionCount
+        {
+            get
+            {
+                int cached = Volatile.Read(ref _hasRecvConnectionCount);
+                if (cached >= 0)
+                {
+                    return cached == 1;
+                }
+
+                bool present = HasExport("NDIlib_recv_get_no_connections");
+                Volatile.Write(ref _hasRecvConnectionCount, present ? 1 : 0);
+                return present;
+            }
+        }
+
+        private static bool HasExport(string entryPoint)
+        {
+            try
+            {
+                if (!NativeLibrary.TryLoad(NDI_LIB, out var handle))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    return NativeLibrary.TryGetExport(handle, entryPoint, out _);
+                }
+                finally
+                {
+                    NativeLibrary.Free(handle);
+                }
             }
             catch
             {

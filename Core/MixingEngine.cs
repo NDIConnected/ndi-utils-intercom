@@ -94,6 +94,7 @@ namespace NDIIntercom.Core
                     if (receivedAudioByChannel.TryGetValue(otherChannel.ChannelNumber, out var otherAudio) && otherAudio != null)
                     {
                         float[] otherFloats = BytesToFloats(otherAudio);
+                        ApplyGain(otherFloats, otherChannel.InputLevel / 100.0f);
 
                         if (n1MixAudio == null)
                         {
@@ -332,7 +333,10 @@ namespace NDIIntercom.Core
         {
             for (int i = 0; i < audio.Length; i++)
             {
-                audio[i] *= gain;
+                float sample = audio[i] * gain;
+                if (sample > 1.0f) sample = 1.0f;
+                if (sample < -1.0f) sample = -1.0f;
+                audio[i] = sample;
             }
         }
 

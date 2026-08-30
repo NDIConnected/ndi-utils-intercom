@@ -52,11 +52,52 @@ namespace NDIIntercom.Core
         private string _deviceId = "unknown-device";
         private string _suffixMode = DefaultSuffixMode;
 
+        // Serializes every access to _pFinder. NDIlib_find_get_current_sources returns a
+        // pointer into finder-owned memory that the *next* call invalidates, so two threads
+        // using the finder concurrently (config-apply walking 16 channels while the settings
+        // page refreshes its source list) could leave one of them reading freed strings.
+        private readonly object _finderLock = new object();
+
+        // Budget for the synchronous resolve attempt performed by a config-apply. Long
+        // enough to cover a cold finder at startup (mDNS / Discovery Server enumeration
+        // needs a few hundred ms), short enough that Settings→Apply doesn't feel stuck.
+        private const int ImmediateResolveBudgetMs = 2500;
+
+        // How long after issuing NDIlib_recv_connect we refrain from judging the connection
+        // dead. Covers the sender handshake and prevents a reconnect storm against a source
+        // that is advertised but unreachable (e.g. blocked by a firewall).
+        private const int ConnectGraceMs = 10000;
+
+        // Re-resolves configured sources and (re)connects receivers. This is what makes the
+        // audio path self-healing: cold start, a peer that boots later, a sender that
+        // restarts, or a network link that flaps are all recovered without operator action.
+        private System.Threading.Timer? _reconcileTimer;
+        private int _reconcileInFlight;
+        private static readonly TimeSpan ReconcileInterval = TimeSpan.FromSeconds(3);
+
+        // Rate-limits the "source not visible" warning per channel so a peer that stays
+        // offline for hours doesn't write a line every reconcile tick.
+        private readonly Dictionary<int, long> _missingSourceWarnTicks = new Dictionary<int, long>();
+        private const long MissingSourceWarnIntervalMs = 60000;
+
         /// <summary>
         /// Initialize NDI SDK, create finder, advertisers, and <paramref name="maxChannels"/> NDI channels.
         /// Each channel creates a persistent receiver registered on the Discovery Server.
         /// </summary>
-        public bool Initialize(int webPort = 5016, int maxChannels = 16)
+        /// <remarks>
+        /// Pass <paramref name="applicationId"/> / <paramref name="deviceId"/> / <paramref name="suffixMode"/>
+        /// from the saved config when available. Doing so lets every channel publish its final
+        /// name on the first try: previously the identity arrived only with the first
+        /// ApplyConfig, so each receiver was destroyed and recreated twice more during
+        /// startup (48 create/destroy cycles for 16 channels), churning the Discovery Server
+        /// and dropping any connection established in between.
+        /// </remarks>
+        public bool Initialize(
+            int webPort = 5016,
+            int maxChannels = 16,
+            string? applicationId = null,
+            string? deviceId = null,
+            string? suffixMode = null)
         {
             if (!NDIWrapper.IsDllAccessible())
             {
@@ -111,6 +152,12 @@ namespace NDIIntercom.Core
                 _webPort = webPort;
                 _maxChannels = maxChannels < 1 ? 1 : maxChannels;
 
+                // Adopt the persisted identity before any channel exists, so receiver and
+                // sender names are correct on first creation (see the remarks above).
+                if (applicationId != null) _applicationId = SanitizeApplicationId(applicationId);
+                if (deviceId != null) _deviceId = SanitizeDeviceId(deviceId);
+                if (suffixMode != null) _suffixMode = SanitizeSuffixMode(suffixMode);
+
                 // Create N channels - each creates a persistent receiver on Discovery Server
                 for (int i = 1; i <= _maxChannels; i++)
                 {
@@ -118,7 +165,11 @@ namespace NDIIntercom.Core
                 }
 
                 _isInitialized = true;
-                LogInfo($"NDIManager initialized: {_maxChannels} channels, web_port={_webPort}, app_id='{_applicationId}', device_id='{_deviceId}'");
+
+                // Start the self-healing pass only once everything above succeeded.
+                _reconcileTimer = new System.Threading.Timer(ReconcileTick, null, ReconcileInterval, ReconcileInterval);
+
+                LogInfo($"NDIManager initialized: {_maxChannels} channels, web_port={_webPort}, app_id='{_applicationId}', device_id='{_deviceId}', recv_connection_count_available={NDIWrapper.HasRecvConnectionCount}");
                 return true;
             }
             catch (Exception ex)
@@ -137,6 +188,9 @@ namespace NDIIntercom.Core
         {
             // Best-effort rollback: ignore secondary failures — the goal is to release
             // native handles that were created before the throwing step.
+            try { _reconcileTimer?.Dispose(); } catch { }
+            _reconcileTimer = null;
+
             try
             {
                 foreach (var ch in _channels.Values)
@@ -169,62 +223,175 @@ namespace NDIIntercom.Core
 
         public void SetChannelSendName(int channelNumber, string name)
         {
-            if (_channels.TryGetValue(channelNumber, out var channel))
+            if (!_channels.TryGetValue(channelNumber, out var channel))
             {
-                // Use default name if empty
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    name = $"Channel {channelNumber}";
-                }
-
-                channel.SendName = name;
-                channel.RecreateSender();
-                channel.RefreshReceiverName();
-
-                if (string.IsNullOrEmpty(channel.ReceiveSource))
-                {
-                    channel.DisconnectReceiver();
-                    return;
-                }
-
-                var source = GetSourceByName(channel.ReceiveSource);
-                if (source.HasValue)
-                {
-                    channel.ConnectReceiver(source.Value);
-                }
-                else
-                {
-                    channel.DisconnectReceiver();
-                }
+                return;
             }
+
+            // Use default name if empty
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = $"Channel {channelNumber}";
+            }
+
+            // Recreates the sender always, but the receiver only when its derived name
+            // really changes — an unconditional recreate dropped a working incoming
+            // connection on every ApplyConfig.
+            channel.ApplySendName(name);
+
+            EnsureChannelConnected(channel, allowLivenessRecheck: false);
         }
 
         public void SetChannelReceiveSource(int channelNumber, string sourceName)
         {
-            if (_channels.TryGetValue(channelNumber, out var channel))
+            if (!_channels.TryGetValue(channelNumber, out var channel))
             {
-                channel.ReceiveSource = sourceName;
+                return;
+            }
 
-                if (string.IsNullOrEmpty(sourceName))
+            channel.ReceiveSource = sourceName ?? string.Empty;
+            EnsureChannelConnected(channel, allowLivenessRecheck: false);
+        }
+
+        /// <summary>
+        /// Brings a channel's receiver in line with its configured
+        /// <see cref="NDIChannel.ReceiveSource"/>, and returns whether it is now pointed at
+        /// that source.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately does NOT disconnect a channel just because its source is not visible
+        /// yet. That was the root cause of "incoming NDI is silent after a restart": at
+        /// startup the finder is only milliseconds old, has discovered nothing, so every
+        /// configured channel was disconnected and never retried — leaving the UI showing
+        /// the right source while no audio flowed until the operator re-applied settings.
+        /// An unresolved source is now left to <see cref="ReconcileTick"/>.
+        /// </remarks>
+        private bool EnsureChannelConnected(NDIChannel channel, bool allowLivenessRecheck)
+        {
+            string want = channel.ReceiveSource;
+
+            if (string.IsNullOrEmpty(want))
+            {
+                // Explicit "None": disconnect, but keep the receiver alive so it stays
+                // visible and controllable on the Discovery Server.
+                channel.DisconnectReceiver();
+                return true;
+            }
+
+            bool needConnect;
+            if (!channel.IsConnectedTo(want))
+            {
+                needConnect = true;   // never connected, or the operator changed the source
+            }
+            else if (allowLivenessRecheck)
+            {
+                needConnect = channel.IsConnectionStale(ConnectGraceMs);
+            }
+            else
+            {
+                needConnect = false;
+            }
+
+            if (!needConnect)
+            {
+                return true;
+            }
+
+            // Blocks only while a config-apply window is open, and only until the shared
+            // budget for that apply is spent (see BeginConfigApply).
+            if (!ResolveSource(want))
+            {
+                WarnMissingSource(channel.ChannelNumber, want);
+                return false;
+            }
+
+            channel.ConnectReceiver(want);
+            ClearMissingSourceWarning(channel.ChannelNumber);
+            return true;
+        }
+
+        private void WarnMissingSource(int channelNumber, string sourceName)
+        {
+            long now = Environment.TickCount64;
+            lock (_missingSourceWarnTicks)
+            {
+                if (_missingSourceWarnTicks.TryGetValue(channelNumber, out long last)
+                    && now - last < MissingSourceWarnIntervalMs)
                 {
-                    // Disconnect receiver (keep it alive for Discovery Server visibility)
-                    channel.DisconnectReceiver();
+                    return;
                 }
-                else
+                _missingSourceWarnTicks[channelNumber] = now;
+            }
+
+            LogWarning($"Channel {channelNumber}: NDI source '{sourceName}' is not visible on the network; receiver is waiting and will connect automatically when it appears.");
+        }
+
+        private void ClearMissingSourceWarning(int channelNumber)
+        {
+            lock (_missingSourceWarnTicks)
+            {
+                _missingSourceWarnTicks.Remove(channelNumber);
+            }
+        }
+
+        /// <summary>
+        /// Watchdog pass: re-resolves every configured source and reconnects receivers that
+        /// are not connected (or whose connection died). Runs every
+        /// <see cref="ReconcileInterval"/> and is skipped if a previous pass is still running.
+        /// </summary>
+        private void ReconcileTick(object? state)
+        {
+            // A pass can block on IsSourceAvailable; never let ticks pile up on top of it.
+            if (Interlocked.CompareExchange(ref _reconcileInFlight, 1, 0) != 0)
+            {
+                return;
+            }
+
+            try
+            {
+                foreach (var channel in _channels.Values)
                 {
-                    // Connect receiver to the specified source
-                    var source = GetSourceByName(sourceName);
-                    if (source.HasValue)
+                    if (string.IsNullOrEmpty(channel.ReceiveSource))
                     {
-                        channel.ConnectReceiver(source.Value);
+                        continue;
                     }
-                    else
-                    {
-                        // Requested source not found: keep receiver alive but disconnected.
-                        channel.DisconnectReceiver();
-                    }
+
+                    // No apply window is open here, so resolution is non-blocking: at steady
+                    // state the finder is already populated, and a missing source means the
+                    // peer genuinely isn't advertising.
+                    EnsureChannelConnected(channel, allowLivenessRecheck: true);
                 }
             }
+            catch (Exception ex)
+            {
+                LogWarning(ex, "NDIManager: receiver reconcile pass failed");
+            }
+            finally
+            {
+                Volatile.Write(ref _reconcileInFlight, 0);
+            }
+        }
+
+        /// <summary>
+        /// Per-channel view of what the receiver is actually doing, for the web UI and
+        /// <c>/healthz</c>. Without this the operator sees the configured source name and
+        /// assumes the channel works even when nothing is connected.
+        /// </summary>
+        public Dictionary<int, NDIReceiverStatus> GetReceiverStatuses()
+        {
+            var result = new Dictionary<int, NDIReceiverStatus>(_channels.Count);
+            foreach (var kvp in _channels)
+            {
+                var channel = kvp.Value;
+                result[kvp.Key] = new NDIReceiverStatus
+                {
+                    ChannelNumber = kvp.Key,
+                    ConfiguredSource = channel.ReceiveSource ?? string.Empty,
+                    ConnectedSource = channel.ConnectedSourceName ?? string.Empty,
+                    IsConnected = channel.IsReceiverConnected
+                };
+            }
+            return result;
         }
 
         public void SetIdentity(string applicationId, string deviceId)
@@ -243,22 +410,7 @@ namespace NDIIntercom.Core
             foreach (var channel in _channels.Values)
             {
                 channel.SetIdentity(_applicationId, _deviceId);
-
-                if (string.IsNullOrEmpty(channel.ReceiveSource))
-                {
-                    channel.DisconnectReceiver();
-                    continue;
-                }
-
-                var source = GetSourceByName(channel.ReceiveSource);
-                if (source.HasValue)
-                {
-                    channel.ConnectReceiver(source.Value);
-                }
-                else
-                {
-                    channel.DisconnectReceiver();
-                }
+                EnsureChannelConnected(channel, allowLivenessRecheck: false);
             }
         }
 
@@ -288,22 +440,7 @@ namespace NDIIntercom.Core
             foreach (var channel in _channels.Values)
             {
                 channel.SetSuffixMode(_suffixMode);
-
-                if (string.IsNullOrEmpty(channel.ReceiveSource))
-                {
-                    channel.DisconnectReceiver();
-                    continue;
-                }
-
-                var source = GetSourceByName(channel.ReceiveSource);
-                if (source.HasValue)
-                {
-                    channel.ConnectReceiver(source.Value);
-                }
-                else
-                {
-                    channel.DisconnectReceiver();
-                }
+                EnsureChannelConnected(channel, allowLivenessRecheck: false);
             }
         }
 
@@ -399,36 +536,17 @@ namespace NDIIntercom.Core
         {
             var sources = new List<string>();
 
-            if (_pFinder == IntPtr.Zero)
-                return sources;
-
             try
             {
-                // Wait for sources
-                NDIWrapper.NDIlib_find_wait_for_sources(_pFinder, 1000);
-
-                // Get current sources
-                uint numSources = 0;
-                IntPtr pSources = NDIWrapper.NDIlib_find_get_current_sources(_pFinder, ref numSources);
-
-                if (pSources != IntPtr.Zero && numSources > 0)
+                lock (_finderLock)
                 {
-                    int structSize = Marshal.SizeOf(typeof(NDIWrapper.NDIlib_source_t));
+                    if (_pFinder == IntPtr.Zero)
+                        return sources;
 
-                    for (int i = 0; i < numSources; i++)
-                    {
-                        IntPtr pSource = IntPtr.Add(pSources, i * structSize);
-                        var source = Marshal.PtrToStructure<NDIWrapper.NDIlib_source_t>(pSource);
+                    // Wait for sources
+                    NDIWrapper.NDIlib_find_wait_for_sources(_pFinder, 1000);
 
-                        if (source.p_ndi_name != IntPtr.Zero)
-                        {
-                            string sourceName = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
-                            if (!string.IsNullOrEmpty(sourceName))
-                            {
-                                sources.Add(sourceName);
-                            }
-                        }
-                    }
+                    ReadSourceNamesLocked(sources);
                 }
             }
             catch (Exception ex)
@@ -439,18 +557,116 @@ namespace NDIIntercom.Core
             return sources;
         }
 
-        private NDIWrapper.NDIlib_source_t? GetSourceByName(string sourceName)
+        /// <summary>
+        /// Copies the finder's current source names into <paramref name="into"/>.
+        /// Caller must hold <see cref="_finderLock"/>. Every name is marshalled into a
+        /// managed string before returning: the native array is only valid until the next
+        /// <c>NDIlib_find_get_current_sources</c>, so nothing that points into it may escape.
+        /// </summary>
+        private void ReadSourceNamesLocked(List<string> into)
         {
-            if (string.IsNullOrEmpty(sourceName) || _pFinder == IntPtr.Zero)
-                return null;
+            uint numSources = 0;
+            IntPtr pSources = NDIWrapper.NDIlib_find_get_current_sources(_pFinder, ref numSources);
+
+            if (pSources == IntPtr.Zero || numSources == 0)
+                return;
+
+            int structSize = Marshal.SizeOf(typeof(NDIWrapper.NDIlib_source_t));
+
+            for (int i = 0; i < numSources; i++)
+            {
+                IntPtr pSource = IntPtr.Add(pSources, i * structSize);
+                var source = Marshal.PtrToStructure<NDIWrapper.NDIlib_source_t>(pSource);
+
+                if (source.p_ndi_name != IntPtr.Zero)
+                {
+                    string sourceName = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
+                    if (!string.IsNullOrEmpty(sourceName))
+                    {
+                        into.Add(sourceName);
+                    }
+                }
+            }
+        }
+
+        // Monotonic deadline shared by every blocking resolve of the current config-apply.
+        // Zero (the default) means "no apply in progress", so the reconcile watchdog and any
+        // other caller never block. Bounding the *whole* apply rather than each channel is
+        // what keeps a 16-channel apply from stalling for 16 × the per-source wait when the
+        // peers are offline.
+        private long _applyResolveDeadline;
+
+        /// <summary>
+        /// Opens a window during which source resolution may block, waiting for NDI discovery
+        /// to catch up. Call around a config-apply; always pair with <see cref="EndConfigApply"/>.
+        /// </summary>
+        public void BeginConfigApply(int totalBudgetMs = ImmediateResolveBudgetMs)
+        {
+            Volatile.Write(ref _applyResolveDeadline, Environment.TickCount64 + totalBudgetMs);
+        }
+
+        public void EndConfigApply()
+        {
+            Volatile.Write(ref _applyResolveDeadline, 0);
+        }
+
+        /// <summary>
+        /// Resolves a source name, blocking until it appears or the current apply budget runs
+        /// out. Outside an apply window this degrades to a single non-blocking lookup.
+        /// </summary>
+        private bool ResolveSource(string sourceName)
+        {
+            while (true)
+            {
+                if (IsSourceAvailable(sourceName))
+                    return true;
+
+                long remaining = Volatile.Read(ref _applyResolveDeadline) - Environment.TickCount64;
+                if (remaining <= 0)
+                    return false;
+
+                try
+                {
+                    lock (_finderLock)
+                    {
+                        if (_pFinder == IntPtr.Zero)
+                            return false;
+
+                        // Short slices: the lock is shared with the settings page's source
+                        // list, so never hold it for the whole remaining budget.
+                        NDIWrapper.NDIlib_find_wait_for_sources(_pFinder, (uint)Math.Min(remaining, 250));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    NDIManager.LogWarning(ex, "NDIManager: find_wait_for_sources failed");
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// True when <paramref name="sourceName"/> is currently advertised on the network.
+        /// Non-blocking; call <see cref="WarmUpFinder"/> first on cold-start paths.
+        /// </summary>
+        private bool IsSourceAvailable(string sourceName)
+        {
+            if (string.IsNullOrEmpty(sourceName))
+                return false;
 
             try
             {
-                uint numSources = 0;
-                IntPtr pSources = NDIWrapper.NDIlib_find_get_current_sources(_pFinder, ref numSources);
-
-                if (pSources != IntPtr.Zero && numSources > 0)
+                lock (_finderLock)
                 {
+                    if (_pFinder == IntPtr.Zero)
+                        return false;
+
+                    uint numSources = 0;
+                    IntPtr pSources = NDIWrapper.NDIlib_find_get_current_sources(_pFinder, ref numSources);
+
+                    if (pSources == IntPtr.Zero || numSources == 0)
+                        return false;
+
                     int structSize = Marshal.SizeOf(typeof(NDIWrapper.NDIlib_source_t));
 
                     for (int i = 0; i < numSources; i++)
@@ -458,27 +674,49 @@ namespace NDIIntercom.Core
                         IntPtr pSource = IntPtr.Add(pSources, i * structSize);
                         var source = Marshal.PtrToStructure<NDIWrapper.NDIlib_source_t>(pSource);
 
-                        if (source.p_ndi_name != IntPtr.Zero)
+                        if (source.p_ndi_name == IntPtr.Zero)
+                            continue;
+
+                        string name = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
+                        if (string.Equals(name, sourceName, StringComparison.Ordinal))
                         {
-                            string name = NdiNativeStrings.PtrToStringUtf8(source.p_ndi_name);
-                            if (name == sourceName)
-                            {
-                                return source;
-                            }
+                            return true;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
+                NDIManager.LogWarning(ex, "NDIManager: source lookup failed");
             }
 
-            return null;
+            return false;
         }
 
         public void Dispose()
         {
+            // Stop the watchdog and wait for an in-flight pass to finish before any native
+            // handle is freed — otherwise the reconcile thread can dereference a destroyed
+            // finder or receiver during shutdown.
+            var timer = _reconcileTimer;
+            _reconcileTimer = null;
+            if (timer != null)
+            {
+                using (var stopped = new ManualResetEvent(false))
+                {
+                    if (timer.Dispose(stopped))
+                    {
+                        stopped.WaitOne(TimeSpan.FromSeconds(2));
+                    }
+                }
+            }
+
+            var spinUntil = Environment.TickCount64 + 2000;
+            while (Volatile.Read(ref _reconcileInFlight) != 0 && Environment.TickCount64 < spinUntil)
+            {
+                Thread.Sleep(10);
+            }
+
             foreach (var channel in _channels.Values)
             {
                 channel.Dispose();
@@ -497,10 +735,13 @@ namespace NDIIntercom.Core
                 _recvAdvertiserInstance = IntPtr.Zero;
             }
 
-            if (_pFinder != IntPtr.Zero)
+            lock (_finderLock)
             {
-                NDIWrapper.NDIlib_find_destroy(_pFinder);
-                _pFinder = IntPtr.Zero;
+                if (_pFinder != IntPtr.Zero)
+                {
+                    NDIWrapper.NDIlib_find_destroy(_pFinder);
+                    _pFinder = IntPtr.Zero;
+                }
             }
 
             if (_isInitialized)
@@ -563,6 +804,88 @@ namespace NDIIntercom.Core
 
         // Receiver name allocated once (freed on Dispose)
         private IntPtr _pRecvName = IntPtr.Zero;
+
+        // Source this receiver was last pointed at via NDIlib_recv_connect, and when.
+        // Cleared whenever the receiver is disconnected or destroyed, which is what lets the
+        // manager's reconcile pass restore the connection after a recreate.
+        private string _connectedSourceName = string.Empty;
+        private long _lastConnectTickCount;
+
+        public string ConnectedSourceName
+        {
+            get { lock (_ndiLifetimeLock) { return _connectedSourceName; } }
+        }
+
+        public bool IsConnectedTo(string sourceName)
+        {
+            if (string.IsNullOrEmpty(sourceName))
+                return false;
+
+            lock (_ndiLifetimeLock)
+            {
+                return string.Equals(_connectedSourceName, sourceName, StringComparison.Ordinal);
+            }
+        }
+
+        /// <summary>
+        /// True when this channel believes it is connected, the grace window since the last
+        /// connect attempt has elapsed, and the SDK reports zero sender connections.
+        /// </summary>
+        /// <remarks>
+        /// Returns false when the runtime cannot report connection counts, so a degraded NDI
+        /// runtime can never trigger a reconnect storm. Note that frame arrival is NOT usable
+        /// as a liveness signal here: a peer intercom with TALK off legitimately sends no
+        /// audio at all.
+        /// </remarks>
+        public bool IsConnectionStale(int graceMs)
+        {
+            if (!NDIWrapper.HasRecvConnectionCount)
+                return false;
+
+            lock (_ndiLifetimeLock)
+            {
+                if (_receiverInstance == IntPtr.Zero || string.IsNullOrEmpty(_connectedSourceName))
+                    return false;
+
+                if (Environment.TickCount64 - _lastConnectTickCount < graceMs)
+                    return false;
+
+                try
+                {
+                    return NDIWrapper.NDIlib_recv_get_no_connections(_receiverInstance, 0) <= 0;
+                }
+                catch (Exception ex)
+                {
+                    NDIManager.LogWarning(ex, $"Channel {ChannelNumber}: recv_get_no_connections failed");
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>Whether the receiver currently has a live connection to its sender.</summary>
+        public bool IsReceiverConnected
+        {
+            get
+            {
+                lock (_ndiLifetimeLock)
+                {
+                    if (_receiverInstance == IntPtr.Zero || string.IsNullOrEmpty(_connectedSourceName))
+                        return false;
+
+                    if (!NDIWrapper.HasRecvConnectionCount)
+                        return true;   // best effort: we asked to connect and can't verify
+
+                    try
+                    {
+                        return NDIWrapper.NDIlib_recv_get_no_connections(_receiverInstance, 0) > 0;
+                    }
+                    catch
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
 
         public NDIChannel(int channelNumber, IntPtr sendAdvertiser, IntPtr recvAdvertiser, string applicationId, string deviceId, int webPort = 5016, string suffixMode = NDIManager.DefaultSuffixMode)
         {
@@ -699,23 +1022,55 @@ namespace NDIIntercom.Core
         }
 
         /// <summary>
-        /// Connect the persistent receiver to an NDI source.
+        /// Connect the persistent receiver to an NDI source, by name.
         /// Does NOT destroy/recreate the receiver, preserving Discovery Server registration.
         /// </summary>
-        public void ConnectReceiver(NDIWrapper.NDIlib_source_t source)
+        /// <remarks>
+        /// Takes a name rather than an <c>NDIlib_source_t</c> on purpose. The struct returned
+        /// by the finder holds pointers into finder-owned memory that the next
+        /// <c>NDIlib_find_get_current_sources</c> invalidates, and its <c>p_url_address</c>
+        /// can belong to a previous generation of the sender — connecting to that stale
+        /// endpoint yields a receiver that never gets audio. Passing the name with a null URL
+        /// makes the SDK resolve the current endpoint itself.
+        /// </remarks>
+        public void ConnectReceiver(string sourceName)
         {
-            lock (_ndiLifetimeLock)
-            {
-                if (_receiverInstance == IntPtr.Zero)
-                    return;
+            if (string.IsNullOrEmpty(sourceName))
+                return;
 
-                try
+            IntPtr pName = IntPtr.Zero;
+            try
+            {
+                pName = Marshal.StringToHGlobalAnsi(sourceName);
+
+                lock (_ndiLifetimeLock)
                 {
+                    if (_receiverInstance == IntPtr.Zero)
+                        return;
+
+                    var source = new NDIWrapper.NDIlib_source_t
+                    {
+                        p_ndi_name = pName,
+                        p_url_address = IntPtr.Zero
+                    };
+
                     NDIWrapper.NDIlib_recv_connect(_receiverInstance, ref source);
+
+                    _connectedSourceName = sourceName;
+                    _lastConnectTickCount = Environment.TickCount64;
                 }
-                catch (Exception ex)
+
+                NDIManager.LogInfo($"Channel {ChannelNumber}: receiver connected to source '{sourceName}'");
+            }
+            catch (Exception ex)
+            {
+                NDIManager.LogWarning(ex, $"Channel {ChannelNumber}: recv_connect to '{sourceName}' failed");
+            }
+            finally
+            {
+                if (pName != IntPtr.Zero)
                 {
-                    NDIManager.LogWarning(ex, "NDIManager: non-fatal error during NDI operation");
+                    Marshal.FreeHGlobal(pName);
                 }
             }
         }
@@ -730,6 +1085,15 @@ namespace NDIIntercom.Core
             {
                 if (_receiverInstance == IntPtr.Zero)
                     return;
+
+                bool wasConnected = !string.IsNullOrEmpty(_connectedSourceName);
+                _connectedSourceName = string.Empty;
+
+                if (!wasConnected)
+                {
+                    // Already idle — avoid re-issuing recv_connect(NULL) on every apply.
+                    return;
+                }
 
                 try
                 {
@@ -752,6 +1116,32 @@ namespace NDIIntercom.Core
             lock (_ndiLifetimeLock)
             {
                 RecreateSenderLocked();
+            }
+        }
+
+        /// <summary>
+        /// Applies a new friendly name: always recreates the sender (its NDI name changes),
+        /// but recreates the receiver only when the derived receiver name actually differs.
+        /// </summary>
+        /// <remarks>
+        /// The previous code recreated the receiver unconditionally on every ApplyConfig,
+        /// which tore down a perfectly good incoming connection each time the operator hit
+        /// Apply — and, at startup, wasted two extra create/destroy cycles per channel.
+        /// </remarks>
+        public void ApplySendName(string name)
+        {
+            lock (_ndiLifetimeLock)
+            {
+                string previousReceiverName = BuildReceiverName();
+
+                SendName = name;
+
+                RecreateSenderLocked();
+
+                if (!string.Equals(previousReceiverName, BuildReceiverName(), StringComparison.Ordinal))
+                {
+                    RecreateReceiverLocked();
+                }
             }
         }
 
@@ -1339,6 +1729,10 @@ namespace NDIIntercom.Core
         /// </summary>
         private void DestroyReceiverLocked()
         {
+            // The new receiver starts unconnected; clearing this is what makes the manager's
+            // reconcile pass restore the source after a name/identity change.
+            _connectedSourceName = string.Empty;
+
             if (_receiverInstance != IntPtr.Zero)
             {
                 try

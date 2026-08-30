@@ -610,7 +610,10 @@ namespace NDIIntercom.Core
         {
             for (int i = 0; i < length; i++)
             {
-                audio[i] *= gain;
+                float sample = audio[i] * gain;
+                if (sample > 1.0f) sample = 1.0f;
+                if (sample < -1.0f) sample = -1.0f;
+                audio[i] = sample;
             }
         }
 

@@ -3,10 +3,10 @@
   <PropertyGroup>
     <AssemblyName>NDI Intercom16</AssemblyName>
     <RootNamespace>NDIIntercom</RootNamespace>
-    <Version>1.7.6</Version>
-    <AssemblyVersion>1.7.6.0</AssemblyVersion>
-    <FileVersion>1.7.6.0</FileVersion>
-    <InformationalVersion>1.7.6</InformationalVersion>
+    <Version>1.7.7</Version>
+    <AssemblyVersion>1.7.7.0</AssemblyVersion>
+    <FileVersion>1.7.7.0</FileVersion>
+    <InformationalVersion>1.7.7</InformationalVersion>
     <Authors>Vizrt NDI AB</Authors>
     <Company>Vizrt NDI AB</Company>
     <Copyright>Copyright (c) 2026 Vizrt NDI AB</Copyright>

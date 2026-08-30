@@ -93,9 +93,65 @@ namespace NDIIntercom.Core
         private volatile bool _isInitialized;
         public bool IsInitialized => _isInitialized;
 
-        public bool Initialize(int webPort = 5016)
+        /// <summary>
+        /// Normalizes a config's identity fields in place; returns true when something
+        /// changed and the caller should persist it.
+        /// </summary>
+        /// <remarks>
+        /// Shared by <see cref="Initialize"/> and <see cref="ApplyConfig"/> so the NDI names
+        /// chosen while creating senders/receivers match the ones the first ApplyConfig would
+        /// produce. Otherwise every endpoint is created with a placeholder identity and then
+        /// destroyed and recreated moments later.
+        /// </remarks>
+        public static bool NormalizeIdentity(AppConfig config)
         {
-            bool ok = _ndiManager.Initialize(webPort, IntercomRuntime.Product.MaxChannels);
+            if (config == null)
+            {
+                return false;
+            }
+
+            bool changed = false;
+
+            string normalizedApplicationId = SanitizeApplicationId(config.ApplicationId);
+            if (!string.Equals(config.ApplicationId, normalizedApplicationId, StringComparison.Ordinal))
+            {
+                config.ApplicationId = normalizedApplicationId;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.DeviceId))
+            {
+                config.DeviceId = Guid.NewGuid().ToString("N");
+                changed = true;
+            }
+
+            // NDI source names always use Compact suffix (not user-configurable).
+            if (!string.Equals(config.IdentitySuffixMode, NDIManager.SuffixModeCompact, StringComparison.Ordinal))
+            {
+                config.IdentitySuffixMode = NDIManager.SuffixModeCompact;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        /// <summary>
+        /// Initializes NDI. Pass <paramref name="initialConfig"/> (the persisted config) so
+        /// channels are created with their final identity straight away.
+        /// </summary>
+        public bool Initialize(int webPort = 5016, AppConfig initialConfig = null)
+        {
+            if (initialConfig != null && NormalizeIdentity(initialConfig))
+            {
+                ConfigManager.SaveConfig(initialConfig);
+            }
+
+            bool ok = _ndiManager.Initialize(
+                webPort,
+                IntercomRuntime.Product.MaxChannels,
+                initialConfig?.ApplicationId,
+                initialConfig?.DeviceId,
+                NDIManager.SuffixModeCompact);
             if (!ok)
             {
                 _logger.LogCritical("IntercomEngine.Initialize: NDIManager.Initialize returned false. Audio engine will not start. Web UI will be available but the intercom is non-functional.");
@@ -140,7 +196,64 @@ namespace NDIIntercom.Core
 
         public List<ChannelState> GetChannels()
         {
+            RefreshNdiConnectionFlags();
             return _channels;
+        }
+
+        /// <summary>
+        /// Per-channel NDI receiver status (configured vs actually connected).
+        /// </summary>
+        public Dictionary<int, NDIReceiverStatus> GetReceiverStatuses()
+        {
+            return _ndiManager.GetReceiverStatuses();
+        }
+
+        /// <summary>
+        /// Number of NDI channels that have a source configured, and how many of those are
+        /// actually connected. Used by <c>/healthz</c> so an all-silent intercom is not
+        /// reported as healthy.
+        /// </summary>
+        public (int Configured, int Connected) GetNdiReceiverHealth()
+        {
+            int configured = 0;
+            int connected = 0;
+
+            foreach (var status in _ndiManager.GetReceiverStatuses().Values)
+            {
+                if (string.IsNullOrEmpty(status.ConfiguredSource))
+                    continue;
+
+                configured++;
+                if (status.IsConnected)
+                    connected++;
+            }
+
+            return (configured, connected);
+        }
+
+        /// <summary>
+        /// Mirrors the real receiver state onto <see cref="ChannelState.IsConnected"/> so the
+        /// web UI can distinguish "source selected and receiving" from "source selected but
+        /// nothing arriving".
+        /// </summary>
+        private void RefreshNdiConnectionFlags()
+        {
+            try
+            {
+                var statuses = _ndiManager.GetReceiverStatuses();
+                foreach (var channel in _channels)
+                {
+                    if (channel.Mode != ChannelMode.NDI)
+                        continue;
+
+                    channel.IsConnected = statuses.TryGetValue(channel.ChannelNumber, out var status)
+                                          && status.IsConnected;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "RefreshNdiConnectionFlags failed");
+            }
         }
 
         public void UpdateAsioChannelStates()
@@ -285,26 +398,7 @@ namespace NDIIntercom.Core
             _config = config ?? new AppConfig();
             _config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
 
-            bool shouldPersistConfig = false;
-            string normalizedApplicationId = SanitizeApplicationId(_config.ApplicationId);
-            if (!string.Equals(_config.ApplicationId, normalizedApplicationId, StringComparison.Ordinal))
-            {
-                _config.ApplicationId = normalizedApplicationId;
-                shouldPersistConfig = true;
-            }
-
-            if (string.IsNullOrWhiteSpace(_config.DeviceId))
-            {
-                _config.DeviceId = Guid.NewGuid().ToString("N");
-                shouldPersistConfig = true;
-            }
-
-            // NDI source names always use Compact suffix (not user-configurable).
-            if (!string.Equals(_config.IdentitySuffixMode, NDIManager.SuffixModeCompact, StringComparison.Ordinal))
-            {
-                _config.IdentitySuffixMode = NDIManager.SuffixModeCompact;
-                shouldPersistConfig = true;
-            }
+            bool shouldPersistConfig = NormalizeIdentity(_config);
 
             _ndiManager.SetIdentity(_config.ApplicationId, _config.DeviceId);
             _ndiManager.SetSuffixMode(NDIManager.SuffixModeCompact);
@@ -349,7 +443,12 @@ namespace NDIIntercom.Core
                 if (!_asioManager.IsInitialized || _asioManager.SelectedDevice != config.SelectedAsioDevice)
                 {
                     bool asioInitialized = false;
-                    const int maxRetries = 3;
+
+                    // The backoff exists for autostart-on-boot, where the ASIO driver can lag
+                    // behind the interface enumerating. An interactive Apply runs on a SignalR
+                    // hub thread, so blocking it for up to 14s there would freeze the settings
+                    // page; give the running case a single attempt.
+                    int maxRetries = IsRunning ? 1 : 3;
                     int retryDelayMs = 2000;
 
                     for (int attempt = 1; attempt <= maxRetries; attempt++)
@@ -379,37 +478,49 @@ namespace NDIIntercom.Core
             }
 #endif
 
-            // Apply channel configuration
-            for (int i = 0; i < config.Channels.Count && i < _channels.Count; i++)
+            // Apply channel configuration.
+            // The apply window lets source resolution block briefly so a cold start (finder
+            // created moments ago, nothing discovered yet) still connects immediately instead
+            // of waiting for the first reconcile pass. The budget is shared across all
+            // channels, so an all-offline setup costs it once, not once per channel.
+            _ndiManager.BeginConfigApply();
+            try
             {
-                var channelConfig = config.Channels[i];
-                var channelState = _channels[i];
+                for (int i = 0; i < config.Channels.Count && i < _channels.Count; i++)
+                {
+                    var channelConfig = config.Channels[i];
+                    var channelState = _channels[i];
 
-                channelState.Label = channelConfig.Label;
-                channelState.InputLevel = channelConfig.InputLevel;
-                channelState.OutputLevel = channelConfig.OutputLevel;
-                channelState.Mode = (ChannelMode)channelConfig.Mode;
+                    channelState.Label = channelConfig.Label;
+                    channelState.InputLevel = Math.Clamp(channelConfig.InputLevel, 0, 300);
+                    channelState.OutputLevel = Math.Clamp(channelConfig.OutputLevel, 0, 100);
+                    channelState.Mode = (ChannelMode)channelConfig.Mode;
 #if !WINDOWS
-                if (channelState.Mode == ChannelMode.ASIO)
-                {
-                    channelState.Mode = ChannelMode.NDI;
-                }
+                    if (channelState.Mode == ChannelMode.ASIO)
+                    {
+                        channelState.Mode = ChannelMode.NDI;
+                    }
 #endif
-                channelState.IntercomGroup = channelConfig.IntercomGroup;
-                channelState.AsioInputChannel = channelConfig.AsioInputChannel;
-                channelState.AsioOutputChannel = channelConfig.AsioOutputChannel;
-                channelState.NdiSendName = channelConfig.NdiSendName;
-                channelState.NdiReceiveName = channelConfig.NdiReceiveName;
+                    channelState.IntercomGroup = channelConfig.IntercomGroup;
+                    channelState.AsioInputChannel = channelConfig.AsioInputChannel;
+                    channelState.AsioOutputChannel = channelConfig.AsioOutputChannel;
+                    channelState.NdiSendName = channelConfig.NdiSendName;
+                    channelState.NdiReceiveName = channelConfig.NdiReceiveName;
 
-                // Only create senders once at startup
-                if (!_sendersCreated)
-                {
-                    _ndiManager.SetChannelSendName(channelState.ChannelNumber, channelState.NdiSendName);
+                    // Only create senders once at startup
+                    if (!_sendersCreated)
+                    {
+                        _ndiManager.SetChannelSendName(channelState.ChannelNumber, channelState.NdiSendName);
+                    }
+
+                    // Always update receiver sources (in case they change)
+                    // This can be done while running - NDI handles it
+                    _ndiManager.SetChannelReceiveSource(channelState.ChannelNumber, channelState.NdiReceiveName);
                 }
-
-                // Always update receiver sources (in case they change)
-                // This can be done while running - NDI handles it
-                _ndiManager.SetChannelReceiveSource(channelState.ChannelNumber, channelState.NdiReceiveName);
+            }
+            finally
+            {
+                _ndiManager.EndConfigApply();
             }
 
             _sendersCreated = true;

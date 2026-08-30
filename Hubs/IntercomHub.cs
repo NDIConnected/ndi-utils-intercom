@@ -49,7 +49,8 @@ namespace NDIIntercom.Hubs
             var channel = channels.FirstOrDefault(c => c.ChannelNumber == channelNumber);
             if (channel != null)
             {
-                channel.InputLevel = level;
+                // 0 = mute, 100 = unity, 300 = 3× boost
+                channel.InputLevel = Math.Clamp(level, 0, 300);
 
                 // Save configuration to persist the change
                 _intercomEngine.SaveCurrentConfiguration();
@@ -200,6 +201,15 @@ namespace NDIIntercom.Hubs
         public async Task<List<string>> GetNDISources()
         {
             return _intercomEngine.GetAvailableNDISources();
+        }
+
+        /// <summary>
+        /// Real receiver state per channel, so the UI can flag a channel whose source is
+        /// selected but not actually connected.
+        /// </summary>
+        public Task<List<NDIReceiverStatus>> GetReceiverStatuses()
+        {
+            return Task.FromResult(_intercomEngine.GetReceiverStatuses().Values.ToList());
         }
 
         public async Task ApplyConfiguration(AppConfig config)
