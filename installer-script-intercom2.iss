@@ -1,10 +1,10 @@
-; NDI Intercom2 (2-channel) - Inno Setup 6
+﻿; NDI Intercom2 (2-channel) - Inno Setup 6
 ; Run build-intercom2-installer.cmd to publish and compile, or publish to publish-intercom2 first.
 
 [Setup]
 AppId={{C4D5E6F7-A8B9-0123-CDEF-123456789ABC}
 AppName=NDI Intercom2
-AppVersion=1.7.9
+AppVersion=1.8.0
 AppPublisher=NDI
 AppPublisherURL=https://ndi.video
 AppSupportURL=https://ndi.video
@@ -13,7 +13,7 @@ DefaultDirName={autopf}\NDI\NDI Intercom2
 DefaultGroupName=NDI Intercom2
 LicenseFile=LICENSE
 OutputDir=Installer-Output
-OutputBaseFilename=NDI-Intercom2-Setup-v1.7.9
+OutputBaseFilename=NDI-Intercom2-Setup-v1.8.0
 SetupIconFile=COM_icon_windows.ico
 Compression=lzma2/max
 SolidCompression=yes
@@ -22,8 +22,8 @@ ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
 InfoBeforeFile=INSTALLER-NOTICE.txt
 UninstallDisplayIcon={app}\NDI Intercom2.exe
-UninstallDisplayName=NDI Intercom2 v1.7.9
-VersionInfoVersion=1.7.9
+UninstallDisplayName=NDI Intercom2 v1.8.0
+VersionInfoVersion=1.8.0
 VersionInfoCompany=NDI
 VersionInfoDescription=NDI Intercom2 Installer
 VersionInfoCopyright=Copyright (C) 2026 Vizrt NDI AB

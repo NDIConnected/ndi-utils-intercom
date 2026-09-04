@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using NAudio.Wave;
@@ -30,10 +31,20 @@ namespace NDIIntercom.Core
         private readonly Dictionary<int, float[]> _asioInputBuffers1 = new Dictionary<int, float[]>();
         private int _currentReadBufferIndex = 0; // Atomic: 0 or 1, indicates which buffer Read should use
 
-        private readonly Dictionary<int, AudioRingBuffer> _microphoneRingBuffers = new Dictionary<int, AudioRingBuffer>(); // Ring buffer per channel (output)
-        private readonly Dictionary<int, AudioRingBuffer> _asioInputRingBuffers = new Dictionary<int, AudioRingBuffer>(); // Ring buffer per ASIO input channel
+        // Microphone ring buffers, keyed by INTERCOM CHANNEL NUMBER (not by ASIO output).
+        // Keying by output channel collapsed every channel sharing a physical output into one
+        // buffer: the mic frame was written once per channel but consumed once per channel too,
+        // so the buffer filled at N× the drain rate and overflowed into garbled audio. That was
+        // the default configuration, where every channel starts on output 0.
+        private readonly ConcurrentDictionary<int, AudioRingBuffer> _microphoneRingBuffers = new ConcurrentDictionary<int, AudioRingBuffer>();
 
-        // Lightweight lock ONLY for ring buffer management (channel add/remove), NOT for audio processing
+        // Ring buffer per ASIO input channel. Concurrent because entries are created on the
+        // ASIO callback thread (ProcessAsioInput) while the dedicated audio thread reads them
+        // through GetAsioInputAudio — a plain Dictionary was being resized under an unlocked
+        // reader, and the whole population happens on the first callback, i.e. right at startup.
+        private readonly ConcurrentDictionary<int, AudioRingBuffer> _asioInputRingBuffers = new ConcurrentDictionary<int, AudioRingBuffer>();
+
+        // Lightweight lock ONLY for cross-mode ring buffer management, NOT for audio processing
         private readonly object _ringBufferManagementLock = new object();
 
         private readonly Dictionary<int, byte[]> _lastAsioInputCache = new Dictionary<int, byte[]>(); // Cache last frame for non-blocking read
@@ -65,22 +76,19 @@ namespace NDIIntercom.Core
         {
             _channels = channels.ToList();
 
-            // Clean up ring buffers for channels that no longer have TALK enabled or are no longer ASIO
-            // Note: This is configuration change, not audio processing path, so lightweight lock is OK
-            lock (_ringBufferManagementLock)
+            // Drop ring buffers for channels that are no longer ASIO+TALK. Doing this matters
+            // beyond memory: a buffer left behind still holds old audio, so a channel that
+            // returns to its previous routing would replay a stale burst.
+            var activeChannels = _channels
+                .Where(c => c.Mode == Models.ChannelMode.ASIO && c.TalkEnabled)
+                .Select(c => c.ChannelNumber)
+                .ToHashSet();
+
+            foreach (var channelNumber in _microphoneRingBuffers.Keys.ToList())
             {
-                var activeOutputChannels = _channels
-                    .Where(c => c.Mode == Models.ChannelMode.ASIO && c.TalkEnabled)
-                    .Select(c => c.AsioOutputChannel)
-                    .ToHashSet();
-
-                var toRemove = _microphoneRingBuffers.Keys
-                    .Where(outputCh => !activeOutputChannels.Contains(outputCh))
-                    .ToList();
-
-                foreach (var outputCh in toRemove)
+                if (!activeChannels.Contains(channelNumber))
                 {
-                    _microphoneRingBuffers.Remove(outputCh);
+                    _microphoneRingBuffers.TryRemove(channelNumber, out _);
                 }
             }
         }
@@ -92,26 +100,20 @@ namespace NDIIntercom.Core
             // Write microphone audio to ring buffers for all ASIO channels with TALK enabled.
             // Manual filter loop instead of LINQ Where — this is the audio hot path; the
             // Where iterator + closure used to allocate ~25/sec * N channels.
-            lock (_ringBufferManagementLock)
+            for (int i = 0; i < _channels.Count; i++)
             {
-                for (int i = 0; i < _channels.Count; i++)
-                {
-                    var channel = _channels[i];
-                    if (channel.Mode != Models.ChannelMode.ASIO || !channel.TalkEnabled)
-                        continue;
+                var channel = _channels[i];
+                if (channel.Mode != Models.ChannelMode.ASIO || !channel.TalkEnabled)
+                    continue;
 
-                    int outputCh = channel.AsioOutputChannel;
+                // One buffer per intercom channel: two channels may legitimately share the
+                // same physical ASIO output, and their mic feeds must stay independent.
+                var rb = _microphoneRingBuffers.GetOrAdd(
+                    channel.ChannelNumber,
+                    _ => new AudioRingBuffer(RING_BUFFER_SAMPLES_400MS));
 
-                    // Create ring buffer if it doesn't exist (400ms @ 48kHz)
-                    if (!_microphoneRingBuffers.TryGetValue(outputCh, out var rb))
-                    {
-                        rb = new AudioRingBuffer(RING_BUFFER_SAMPLES_400MS);
-                        _microphoneRingBuffers[outputCh] = rb;
-                    }
-
-                    // Write audio to ring buffer (AudioRingBuffer has internal locking)
-                    rb.Write(buffer);
-                }
+                // Write audio to ring buffer (AudioRingBuffer has internal locking)
+                rb.Write(buffer);
             }
         }
 
@@ -195,18 +197,12 @@ namespace NDIIntercom.Core
                     // De-interleave and store per-channel buffers WITHOUT LOCK
                     for (int ch = 0; ch < channelCount; ch++)
                     {
-                        // Create ring buffer if it doesn't exist (400ms @ 48kHz)
-                        // Ring buffers need brief lock for dictionary access (not audio data)
-                        if (!_asioInputRingBuffers.ContainsKey(ch))
-                        {
-                            lock (_ringBufferManagementLock)
-                            {
-                                if (!_asioInputRingBuffers.ContainsKey(ch))
-                                {
-                                    _asioInputRingBuffers[ch] = new AudioRingBuffer(RING_BUFFER_SAMPLES_400MS);
-                                }
-                            }
-                        }
+                        // Create ring buffer if it doesn't exist (400ms @ 48kHz).
+                        // GetOrAdd keeps the dictionary safe for the audio thread reading it
+                        // concurrently through GetAsioInputAudio.
+                        var inputRing = _asioInputRingBuffers.GetOrAdd(
+                            ch,
+                            _ => new AudioRingBuffer(RING_BUFFER_SAMPLES_400MS));
 
                         // Extract this channel's samples
                         for (int i = 0; i < samplesPerBuffer; i++)
@@ -218,15 +214,19 @@ namespace NDIIntercom.Core
                         // IMPORTANT: pass exact byte count because audioBytes from ArrayPool may be oversized
                         int exactByteCount = samplesPerBuffer * sizeof(float);
                         Buffer.BlockCopy(channelSamples, 0, audioBytes, 0, exactByteCount);
-                        _asioInputRingBuffers[ch].Write(audioBytes, exactByteCount);
+                        inputRing.Write(audioBytes, exactByteCount);
 
                         // Store in write buffer for N-1 mixing (used in PrepareAsioChannelAudio)
-                        // This write is LOCK-FREE because Read is reading from the OTHER buffer
-                        if (!writeBuffers.ContainsKey(ch))
+                        // This write is LOCK-FREE because Read is reading from the OTHER buffer.
+                        // Re-allocate when the driver changes its buffer size (an ASIO control
+                        // panel change does this); a short array would otherwise make the copy
+                        // below throw and silently drop all input audio.
+                        if (!writeBuffers.TryGetValue(ch, out var writeBuffer) || writeBuffer.Length != samplesPerBuffer)
                         {
-                            writeBuffers[ch] = new float[samplesPerBuffer];
+                            writeBuffer = new float[samplesPerBuffer];
+                            writeBuffers[ch] = writeBuffer;
                         }
-                        Array.Copy(channelSamples, writeBuffers[ch], samplesPerBuffer);
+                        Array.Copy(channelSamples, writeBuffer, samplesPerBuffer);
                     }
 
                     // ATOMIC SWAP: Make the newly written buffer available for reading
@@ -414,8 +414,7 @@ namespace NDIIntercom.Core
         private readonly Dictionary<int, float[]> _readBuffersSnapshotScratch = new Dictionary<int, float[]>(16);
 
         // Per-channel byte[] scratches reused across ring-buffer reads to avoid per-frame
-        // allocations from AudioRingBuffer.Read. Keyed by ASIO output channel for the
-        // microphone path and by intercom channel number for the cross-mode (NDI) path.
+        // allocations from AudioRingBuffer.Read. Both are keyed by intercom channel number.
         private readonly Dictionary<int, byte[]> _micRingReadScratch = new Dictionary<int, byte[]>(16);
         private readonly Dictionary<int, byte[]> _crossModeRingReadScratch = new Dictionary<int, byte[]>(16);
 
@@ -437,16 +436,16 @@ namespace NDIIntercom.Core
                 // 1. TALK: Send microphone audio from ring buffer.
                 if (channel.TalkEnabled)
                 {
-                    int outputCh = channel.AsioOutputChannel;
-                    if (_microphoneRingBuffers.TryGetValue(outputCh, out var micRing))
+                    int channelNumber = channel.ChannelNumber;
+                    if (_microphoneRingBuffers.TryGetValue(channelNumber, out var micRing))
                     {
                         // Allocation-free read: reuse a per-channel scratch instead of
                         // letting AudioRingBuffer.Read allocate a fresh byte[] each call.
                         int byteCount = samplesNeeded * sizeof(float);
-                        if (!_micRingReadScratch.TryGetValue(outputCh, out var scratch) || scratch.Length < byteCount)
+                        if (!_micRingReadScratch.TryGetValue(channelNumber, out var scratch) || scratch.Length < byteCount)
                         {
                             scratch = new byte[byteCount];
-                            _micRingReadScratch[outputCh] = scratch;
+                            _micRingReadScratch[channelNumber] = scratch;
                         }
 
                         if (micRing.TryRead(scratch, samplesNeeded))

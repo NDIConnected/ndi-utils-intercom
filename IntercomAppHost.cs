@@ -129,6 +129,11 @@ public static class IntercomAppHost
         // the same static SetLogger entry point under the same fully-qualified name; the
         // `using` block at the top of each file resolves to the right type per platform.
         NDIIntercom.Core.AudioEngine.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.AudioEngine"));
+#if WINDOWS
+        // Without this the entire ASIO path is silent in the log: driver init, start failures
+        // and control-panel reset requests all used to be swallowed.
+        AsioManager.SetLogger(loggerFactory.CreateLogger("NDIIntercom.Core.AsioManager"));
+#endif
 
         var intercomEngine = app.Services.GetRequiredService<IntercomEngine>();
 
@@ -242,18 +247,7 @@ public static class IntercomAppHost
     /// Resolves the log directory for the active product. Lives next to the JSON config
     /// (Windows: %ProgramData%\NDI Intercom16\logs, Linux: ~/.local/share/NDI/NDI Intercom16/logs).
     /// </summary>
-    private static string ResolveLogDirectory()
-    {
-        string baseDir = OperatingSystem.IsWindows()
-            ? System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                IntercomRuntime.Product.DataFolderName)
-            : System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "NDI",
-                IntercomRuntime.Product.DataFolderName);
-        return System.IO.Path.Combine(baseDir, "logs");
-    }
+    private static string ResolveLogDirectory() => ConfigManager.LogsDirectory;
 
     private static bool IsPrivateOrLocalOriginHost(string host)
     {

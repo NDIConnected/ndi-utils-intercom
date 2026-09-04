@@ -4,6 +4,23 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] — 2026-09
+
+### Fixed
+- ASIO channels no longer stay dead when the driver is not ready at startup: a watchdog re-initializes and restarts the device every 5s until it plays, instead of giving up after the one-shot init.
+- ASIO start failures are logged with the driver error and the `AsioOut` instance is discarded, so a failed attempt can be retried instead of leaving a half-wired engine.
+- Changing the ASIO device from Settings → Apply now rebuilds the audio engine together with the driver; previously the engine kept the old output channel count and audio was routed to the wrong outputs until a restart.
+- Microphone ring buffers are keyed by intercom channel instead of ASIO output channel, so two channels sharing one output no longer mix into the same buffer.
+- Ring buffer dictionaries are concurrent, removing a startup race between the ASIO callback thread and configuration apply.
+- ASIO input buffers are re-allocated when the driver changes its buffer size.
+
+### Added
+- Tray menu: **Open Logs Folder** and **Export Diagnostics…**. The export produces a zip with the log tail (max 4 MB per file), `config.json`, `appsettings.json`, and a summary of system, engine, ASIO, and per-channel routing state.
+- ASIO routing indexes are validated against the driver's real channel counts and out-of-range channels are logged as warnings.
+
+### Changed
+- Settings: the ASIO input/output dropdowns list only the channels the selected device actually exposes; a configured channel beyond that range is shown as "not available on this device" instead of being silently muted.
+
 ## [1.7.9] — 2026-08
 
 ### Added

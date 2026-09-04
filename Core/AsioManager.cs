@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NAudio.Wave;
 using NAudio.Wave.Asio;
 
@@ -11,6 +13,12 @@ namespace NDIIntercom.Core
     /// </summary>
     public class AsioManager : IDisposable
     {
+        // Static logger so a wedged ASIO path is visible in the rolling log file.
+        // Previously every failure here was swallowed, which made a silent ASIO
+        // indistinguishable from a misconfigured one.
+        private static ILogger _logger = NullLogger.Instance;
+        public static void SetLogger(ILogger logger) => _logger = logger ?? NullLogger.Instance;
+
         private AsioOut _asioDriver;
         private string _selectedDeviceName;
         private int _inputChannelCount;
@@ -20,7 +28,45 @@ namespace NDIIntercom.Core
         // Events for audio data
         public event EventHandler<AsioAudioAvailableEventArgs> AudioAvailable;
 
+        /// <summary>
+        /// Raised when the driver asks the host to reset (user changed buffer size or sample
+        /// rate in the ASIO control panel). Channel counts and buffer size can change, so the
+        /// audio engine must be rebuilt — ignoring this leaves the engine interleaving output
+        /// with a stale channel stride, which puts audio on the wrong physical outputs.
+        /// </summary>
+        public event EventHandler DriverResetRequested;
+
         public bool IsInitialized => _asioDriver != null;
+
+        /// <summary>
+        /// True only after <see cref="Start"/> has completed <c>InitRecordAndPlayback</c> and
+        /// <c>Play()</c> without throwing. An <see cref="AsioOut"/> instance can only be
+        /// initialised once, so a failed Start requires a full <see cref="Initialize"/>.
+        /// </summary>
+        public bool IsStarted => _isStarted;
+
+        /// <summary>Driver-reported transport state; false once the driver stops on its own.</summary>
+        public bool IsPlaying
+        {
+            get
+            {
+                var driver = _asioDriver;
+                if (driver == null || !_isStarted)
+                    return false;
+
+                try
+                {
+                    return driver.PlaybackState == PlaybackState.Playing;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+        private volatile bool _isStarted;
+
         public int InputChannelCount => _inputChannelCount;
         public int OutputChannelCount => _outputChannelCount;
         public string SelectedDevice => _selectedDeviceName;
@@ -53,6 +99,10 @@ namespace NDIIntercom.Core
             bool success = false;
             LastError = null;
 
+            // A driver instance can only be initialised once (NAudio throws on a second
+            // InitRecordAndPlayback), so recovery always goes through a fresh instance.
+            _isStarted = false;
+
             // ASIO requires STA thread - create dedicated STA thread for initialization
             var staThread = new System.Threading.Thread(() =>
             {
@@ -61,6 +111,7 @@ namespace NDIIntercom.Core
                     // Dispose existing driver if any
                     if (_asioDriver != null)
                     {
+                        try { _asioDriver.DriverResetRequest -= OnDriverResetRequest; } catch { }
                         _asioDriver.Dispose();
                         _asioDriver = null;
                     }
@@ -72,6 +123,8 @@ namespace NDIIntercom.Core
                     // Query channel counts
                     _inputChannelCount = _asioDriver.DriverInputChannelCount;
                     _outputChannelCount = _asioDriver.DriverOutputChannelCount;
+
+                    _asioDriver.DriverResetRequest += OnDriverResetRequest;
 
                     success = true;
                 }
@@ -88,7 +141,41 @@ namespace NDIIntercom.Core
             staThread.Start();
             staThread.Join(); // Wait for initialization to complete
 
+            if (success)
+            {
+                bool rateOk;
+                try { rateOk = _asioDriver.IsSampleRateSupported(SAMPLE_RATE); }
+                catch (Exception) { rateOk = false; }
+
+                // The intercom pipeline is hard-wired to 48 kHz. A driver locked to another
+                // rate by its own control panel (Dante Virtual Soundcard does this) makes
+                // InitRecordAndPlayback throw later; say so now instead of at Start().
+                if (!rateOk)
+                {
+                    _logger.LogWarning(
+                        "ASIO device '{Device}' reports {Rate} Hz as unsupported. Set the driver to that rate in its control panel, otherwise playback cannot start.",
+                        deviceName, SAMPLE_RATE);
+                }
+
+                _logger.LogInformation(
+                    "ASIO device '{Device}' initialized: inputs={Inputs}, outputs={Outputs}, sample_rate_48k_supported={RateOk}",
+                    deviceName, _inputChannelCount, _outputChannelCount, rateOk);
+            }
+            else
+            {
+                _logger.LogWarning("ASIO device '{Device}' initialization failed: {Err}", deviceName, LastError ?? "unknown");
+            }
+
             return success;
+        }
+
+        private void OnDriverResetRequest(object sender, EventArgs e)
+        {
+            _logger.LogWarning("ASIO device '{Device}' requested a driver reset; the audio engine will be rebuilt.", _selectedDeviceName);
+            // The driver is no longer usable in its current configuration. Marking it stopped
+            // makes the reconcile pass in IntercomEngine tear down and rebuild the engine.
+            _isStarted = false;
+            try { DriverResetRequested?.Invoke(this, EventArgs.Empty); } catch { }
         }
 
         /// <summary>
@@ -96,26 +183,44 @@ namespace NDIIntercom.Core
         /// </summary>
         public bool Start(IWaveProvider waveProvider)
         {
+            var driver = _asioDriver;
+            if (driver == null)
+            {
+                LastError = "ASIO driver not initialized";
+                return false;
+            }
+
             try
             {
-                if (_asioDriver == null)
-                {
-                    return false;
-                }
-
                 // Subscribe to audio available event
-                _asioDriver.AudioAvailable += OnAsioAudioAvailable;
+                driver.AudioAvailable += OnAsioAudioAvailable;
 
                 // Initialize recording and playback
-                _asioDriver.InitRecordAndPlayback(waveProvider, _inputChannelCount, SAMPLE_RATE);
+                driver.InitRecordAndPlayback(waveProvider, _inputChannelCount, SAMPLE_RATE);
 
                 // Start playback
-                _asioDriver.Play();
+                driver.Play();
 
+                _isStarted = true;
+                _logger.LogInformation(
+                    "ASIO device '{Device}' started: inputs={Inputs}, outputs={Outputs}, frames_per_buffer={Frames}",
+                    _selectedDeviceName, driver.NumberOfInputChannels, driver.NumberOfOutputChannels, driver.FramesPerBuffer);
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LastError = $"{ex.GetType().Name}: {ex.Message}";
+                _isStarted = false;
+
+                // Leave nothing half-wired: the handler was attached before the init call, and
+                // this instance can never be initialised again, so drop it entirely. The caller
+                // recovers by calling Initialize() for a fresh instance.
+                try { driver.AudioAvailable -= OnAsioAudioAvailable; } catch { }
+                try { driver.DriverResetRequest -= OnDriverResetRequest; } catch { }
+                try { driver.Dispose(); } catch { }
+                _asioDriver = null;
+
+                _logger.LogError(ex, "ASIO device '{Device}' failed to start; driver discarded so it can be re-initialized.", _selectedDeviceName);
                 return false;
             }
         }
@@ -125,6 +230,11 @@ namespace NDIIntercom.Core
         /// </summary>
         public void Stop()
         {
+            // NAudio keeps its `isInitialized` flag set after Stop(), so a stopped instance can
+            // never be re-initialised. Clearing _isStarted makes callers go through
+            // Initialize() again rather than silently believing ASIO is still live.
+            _isStarted = false;
+
             try
             {
                 if (_asioDriver != null)
@@ -133,9 +243,9 @@ namespace NDIIntercom.Core
                     _asioDriver.Stop();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently continue
+                _logger.LogWarning(ex, "ASIO device '{Device}' stop failed", _selectedDeviceName);
             }
         }
 
@@ -177,11 +287,27 @@ namespace NDIIntercom.Core
             return names;
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Stops and releases the driver instance. Required before any restart: NAudio keeps
+        /// its internal <c>isInitialized</c> flag set for the lifetime of an
+        /// <see cref="AsioOut"/>, so a stopped instance can never be started again.
+        /// </summary>
+        public void ReleaseDriver()
         {
             Stop();
-            _asioDriver?.Dispose();
+
+            var driver = _asioDriver;
             _asioDriver = null;
+            if (driver != null)
+            {
+                try { driver.DriverResetRequest -= OnDriverResetRequest; } catch { }
+                try { driver.Dispose(); } catch { }
+            }
+        }
+
+        public void Dispose()
+        {
+            ReleaseDriver();
         }
     }
 }

@@ -1,9 +1,9 @@
-; NDI Intercom16 Installer Script v1.7.9
+; NDI Intercom16 Installer Script v1.8.0
 ; Inno Setup 6.x required
 ; Run build-intercom16-installer.cmd to publish and compile, or publish to .\publish first.
 
 #define MyAppName "NDI Intercom16"
-#define MyAppVersion "1.7.9"
+#define MyAppVersion "1.8.0"
 #define MyAppPublisher "NDI"
 #define MyAppURL "https://ndi.video"
 #define MyAppExeName "NDI Intercom16.exe"
@@ -76,7 +76,7 @@ Type: filesandordirs; Name: "{app}"
 Type: filesandordirs; Name: "{%APPDATA}\Elgato\StreamDeck\Plugins\com.ndi.intercom16.sdPlugin"
 
 [Messages]
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nNDI Intercom16 is a 16-channel NDI intercom with web control, optional ASIO, and NDI Bridge integration.%n%nVersion 1.7.9:%n- Talk and Listen button state restored after restart%n%nSee CHANGELOG.md in the repo or Documentation after install for full release notes.%n%nSelf-contained .NET 8 app — NDI Runtime must be installed separately.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nNDI Intercom16 is a 16-channel NDI intercom with web control, optional ASIO, and NDI Bridge integration.%n%nVersion 1.8.0:%n- ASIO watchdog: channels recover on their own if the driver is not ready at startup%n- Correct ASIO routing after a device change, without restarting%n- Tray menu: Open Logs Folder and Export Diagnostics%n%nSee CHANGELOG.md in the repo or Documentation after install for full release notes.%n%nSelf-contained .NET 8 app — NDI Runtime must be installed separately.
 
 FinishedHeadingLabel=Setup Completed Successfully!
 FinishedLabel=[name] is installed and runs in the system tray.%n%nRight-click the tray icon to open the web UI.%n%nLocal access: http://127.0.0.1:5016%nRemote control: tray → Web Server Settings%n%nConfiguration: %ProgramData%\NDI Intercom16\%nDocumentation and licenses (including Processing.NDI.Lib.Licenses.txt) are in the install folder.

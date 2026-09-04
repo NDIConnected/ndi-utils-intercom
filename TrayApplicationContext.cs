@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using NDIIntercom.Core;
 using NDIIntercom.Models;
 
 namespace NDIIntercom;
@@ -30,11 +31,20 @@ public class TrayApplicationContext : ApplicationContext
         var webServerItem = new ToolStripMenuItem("Web Server Settings...");
         webServerItem.Click += OnConfigureWebServer;
 
+        var openLogsItem = new ToolStripMenuItem("Open Logs Folder");
+        openLogsItem.Click += OnOpenLogsFolder;
+
+        var exportDiagnosticsItem = new ToolStripMenuItem("Export Diagnostics...");
+        exportDiagnosticsItem.Click += OnExportDiagnostics;
+
         var exitItem = new ToolStripMenuItem("Exit");
         exitItem.Click += OnExit;
 
         contextMenu.Items.Add(openItem);
         contextMenu.Items.Add(webServerItem);
+        contextMenu.Items.Add(new ToolStripSeparator());
+        contextMenu.Items.Add(openLogsItem);
+        contextMenu.Items.Add(exportDiagnosticsItem);
         contextMenu.Items.Add(new ToolStripSeparator());
         contextMenu.Items.Add(exitItem);
 
@@ -113,6 +123,86 @@ public class TrayApplicationContext : ApplicationContext
                 IntercomRuntime.Product.ProductDisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
+        }
+    }
+
+    private void OnOpenLogsFolder(object? sender, EventArgs e)
+    {
+        try
+        {
+            string logsDirectory = ConfigManager.LogsDirectory;
+            Directory.CreateDirectory(logsDirectory);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = logsDirectory,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Unable to open the logs folder:\n{ex.Message}",
+                IntercomRuntime.Product.ProductDisplayName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+    }
+
+    private void OnExportDiagnostics(object? sender, EventArgs e)
+    {
+        // Building the archive touches the disk and can take a moment on a long log day;
+        // this runs on the UI thread, so show the wait cursor rather than looking frozen.
+        Cursor previousCursor = Cursor.Current;
+        Cursor.Current = Cursors.WaitCursor;
+
+        try
+        {
+            // The engine is optional: a bundle collected while the audio engine failed to
+            // come up is exactly the one worth having, so never let this throw.
+            IntercomEngine? engine = null;
+            try
+            {
+                engine = _webApp.Services.GetService<IntercomEngine>();
+            }
+            catch
+            {
+                // Host shutting down; fall back to a log-and-config-only bundle.
+            }
+
+            string zipPath = DiagnosticsBundle.Create(engine);
+
+            Cursor.Current = previousCursor;
+
+            var choice = MessageBox.Show(
+                $"Diagnostics saved to:\n\n{zipPath}\n\nThis archive contains the log files, the configuration and a summary of the current audio state. Open the containing folder?",
+                IntercomRuntime.Product.ProductDisplayName,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (choice == DialogResult.Yes)
+            {
+                // /select highlights the archive instead of just opening the folder.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{zipPath}\"",
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Cursor.Current = previousCursor;
+            MessageBox.Show(
+                $"Unable to export diagnostics:\n{ex.Message}",
+                IntercomRuntime.Product.ProductDisplayName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            Cursor.Current = previousCursor;
         }
     }
 

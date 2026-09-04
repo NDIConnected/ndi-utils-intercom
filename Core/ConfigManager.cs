@@ -23,6 +23,15 @@ namespace NDIIntercom.Core
 
         private static string ExportsDirectory => Path.Combine(ConfigDirectory, "Exports");
 
+        /// <summary>Per-product data directory (config, logs, exports, presets).</summary>
+        public static string DataDirectory => ConfigDirectory;
+
+        /// <summary>Full path of <c>config.json</c>.</summary>
+        public static string ConfigPath => ConfigFilePath;
+
+        /// <summary>Directory holding the rolling <c>intercom-YYYY-MM-DD.log</c> files.</summary>
+        public static string LogsDirectory => Path.Combine(ConfigDirectory, "logs");
+
         private static string[] LegacyConfigDirectories => new[]
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), IntercomRuntime.Product.DataFolderName)

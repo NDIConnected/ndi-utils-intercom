@@ -18,6 +18,15 @@ let inputDevices = [];
 let outputDevices = [];
 let ndiSources = [];
 let asioDevices = [];
+/**
+ * Channel counts of the ASIO device currently initialized in the engine. The routing
+ * dropdowns used to always offer 64 inputs and 64 outputs regardless of the device, and a
+ * channel routed past the real count is silently dropped by the mixer — which is
+ * indistinguishable from broken routing. 0 means "unknown", in which case we fall back to
+ * the widest range rather than hiding options the operator may legitimately need.
+ */
+let asioChannelCounts = { inputChannels: 0, outputChannels: 0 };
+const ASIO_MAX_CHANNELS_FALLBACK = 64;
 let bridgeConnected = false;
 let currentBridgeMode = "NONE";
 let selectedBridgePanel = null; // which tab is currently shown (host/join/local)
@@ -113,6 +122,7 @@ async function loadSettings() {
         // Load ASIO devices (Windows only)
         if (productInfo.asioAvailable) {
             asioDevices = await connection.invoke("GetAsioDevices");
+            await refreshAsioChannelCounts();
         } else {
             asioDevices = [];
         }
@@ -213,6 +223,53 @@ function populateAsioDevices() {
     }
 }
 
+/**
+ * Reads the live channel counts from the engine, falling back to the values persisted in
+ * the config when no device is initialized yet (e.g. the driver is still coming up).
+ */
+async function refreshAsioChannelCounts() {
+    let inputs = 0;
+    let outputs = 0;
+
+    try {
+        const counts = await connection.invoke("GetAsioChannelCounts");
+        inputs = counts.inputChannels || 0;
+        outputs = counts.outputChannels || 0;
+    } catch (err) {
+        // Engine has no ASIO device up yet; the config values are the best we have.
+    }
+
+    if (inputs <= 0) inputs = config?.asioInputChannelCount || 0;
+    if (outputs <= 0) outputs = config?.asioOutputChannelCount || 0;
+
+    asioChannelCounts = { inputChannels: inputs, outputChannels: outputs };
+}
+
+/**
+ * Builds the option list for a routing dropdown. Any saved value beyond the device range is
+ * still listed, flagged as unavailable, so Apply cannot silently rewrite the operator's
+ * routing and the problem is visible instead.
+ */
+function buildAsioChannelOptions(count, selectedValue, label) {
+    const limit = count > 0 ? count : ASIO_MAX_CHANNELS_FALLBACK;
+    const selected = Number(selectedValue) || 0;
+    const options = [];
+
+    for (let idx = 0; idx < limit; idx++) {
+        options.push(
+            `<option value="${idx}" ${selected === idx ? "selected" : ""}>${label} ${idx + 1}</option>`
+        );
+    }
+
+    if (selected >= limit) {
+        options.push(
+            `<option value="${selected}" selected>${label} ${selected + 1} (not available on this device)</option>`
+        );
+    }
+
+    return options.join("");
+}
+
 // Scan ASIO channels
 async function scanAsioChannels() {
     if (!productInfo.asioAvailable) {
@@ -238,6 +295,21 @@ async function scanAsioChannels() {
             document.getElementById("asioInputCount").textContent = channelCounts.inputChannels;
             document.getElementById("asioOutputCount").textContent = channelCounts.outputChannels;
             document.getElementById("asioChannelInfo").style.display = "block";
+
+            // Re-render the routing dropdowns only when the ranges actually changed, so a
+            // scan on an unchanged device does not discard pending edits below.
+            const rangesChanged =
+                (channelCounts.inputChannels || 0) !== asioChannelCounts.inputChannels ||
+                (channelCounts.outputChannels || 0) !== asioChannelCounts.outputChannels;
+
+            asioChannelCounts = {
+                inputChannels: channelCounts.inputChannels || 0,
+                outputChannels: channelCounts.outputChannels || 0
+            };
+
+            if (rangesChanged) {
+                populateNDIChannels();
+            }
 
             alert(`ASIO Device initialized!\n\nInput Channels: ${channelCounts.inputChannels}\nOutput Channels: ${channelCounts.outputChannels}`);
         } else {
@@ -366,16 +438,12 @@ function populateNDIChannels() {
             <div id="asioFields${i}" style="display: ${channelMode === 1 ? 'block' : 'none'}; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <label>ASIO Input:</label>
                 <select id="asioInput${i}" style="margin-bottom: 8px;">
-                    ${Array.from({length: 64}, (_, idx) => `
-                        <option value="${idx}" ${(channelConfig.asioInputChannel || 0) === idx ? 'selected' : ''}>Input ${idx + 1}</option>
-                    `).join('')}
+                    ${buildAsioChannelOptions(asioChannelCounts.inputChannels, channelConfig.asioInputChannel, "Input")}
                 </select>
 
                 <label>ASIO Output:</label>
                 <select id="asioOutput${i}">
-                    ${Array.from({length: 64}, (_, idx) => `
-                        <option value="${idx}" ${(channelConfig.asioOutputChannel || 0) === idx ? 'selected' : ''}>Output ${idx + 1}</option>
-                    `).join('')}
+                    ${buildAsioChannelOptions(asioChannelCounts.outputChannels, channelConfig.asioOutputChannel, "Output")}
                 </select>
             </div>
             `

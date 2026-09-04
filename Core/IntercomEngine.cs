@@ -26,6 +26,22 @@ namespace NDIIntercom.Core
         private AsioAudioEngine _asioAudioEngine;
         private Dictionary<int, float> _asioAudioLevels = new Dictionary<int, float>();
         private readonly object _asioLevelsLock = new object();
+
+        // Serializes every ASIO lifecycle transition (create / start / tear down) so the
+        // watchdog, an interactive Apply and the device picker cannot interleave.
+        private readonly object _asioLifecycleLock = new object();
+
+        // ASIO watchdog. The ASIO path used to be a one-shot: if the driver was not ready
+        // during the ~14s startup retry budget, the channels stayed dead until the operator
+        // re-applied settings or restarted. This mirrors the NDI reconcile timer.
+        private System.Threading.Timer _asioReconcileTimer;
+        private int _asioReconcileInFlight;
+        private static readonly TimeSpan AsioReconcileInterval = TimeSpan.FromSeconds(5);
+
+        // Rate-limit for the "still cannot start ASIO" warning (per process, 1/minute) so a
+        // permanently absent interface does not flood the log over 24/7 uptime.
+        private long _asioWarnTicks;
+        private const long AsioWarnIntervalMs = 60_000;
 #endif
         private List<ChannelState> _channels;
         private AppConfig _config;
@@ -289,21 +305,19 @@ namespace NDIIntercom.Core
 
         public bool InitializeAsioDevice(string deviceName)
         {
-            // Stop existing ASIO engine if switching devices.
-            // We MUST also unsubscribe the previous AudioAvailable handler from the
-            // _asioManager event, otherwise the lambda keeps the old _asioAudioEngine
-            // alive (memory leak) and a future ASIO callback fires on a stale instance
-            // (potential crash). See StartAsioEngine() for the matching subscribe.
-            if (_asioAudioEngine != null && _asioManager.IsInitialized)
+            lock (_asioLifecycleLock)
             {
-                DetachAsioAudioHandler();
-                _asioManager.Stop();
-                _asioAudioEngine = null;
-            }
+                // Always tear the engine down before replacing the driver: the engine's output
+                // channel stride is fixed at construction from the old device's channel count,
+                // so reusing it against a new driver would interleave onto the wrong outputs.
+                TearDownAsioEngineLocked();
 
-            bool success = _asioManager.Initialize(deviceName);
-            if (success)
-            {
+                bool success = _asioManager.Initialize(deviceName);
+                if (!success)
+                {
+                    return false;
+                }
+
                 if (_config != null)
                 {
                     _config.SelectedAsioDevice = deviceName;
@@ -314,10 +328,11 @@ namespace NDIIntercom.Core
 
                 if (IsRunning)
                 {
-                    StartAsioEngine();
+                    StartAsioEngineLocked();
                 }
+
+                return true;
             }
-            return success;
         }
 
         // Captured handler reference so we can unsubscribe symmetrically when switching
@@ -335,27 +350,183 @@ namespace NDIIntercom.Core
         }
 
         /// <summary>
-        /// Creates and starts the ASIO audio engine (called from Start() or InitializeAsioDevice())
+        /// Creates and starts the ASIO audio engine (called from Start(), ApplyConfig() and
+        /// the watchdog). Safe to call repeatedly: it is a no-op once the driver is actually
+        /// playing, and it rebuilds the engine when it is not.
         /// </summary>
-        private void StartAsioEngine()
+        private bool StartAsioEngine()
         {
-            if (!_asioManager.IsInitialized || _asioAudioEngine != null)
-                return;
+            lock (_asioLifecycleLock)
+            {
+                return StartAsioEngineLocked();
+            }
+        }
 
-            _asioAudioEngine = new AsioAudioEngine(_asioManager.OutputChannelCount);
-            _asioAudioEngine.UpdateChannelStates(_channels);
+        private bool StartAsioEngineLocked()
+        {
+            if (!_asioManager.IsInitialized)
+                return false;
+
+            // Already live — nothing to do.
+            if (_asioAudioEngine != null && _asioManager.IsStarted)
+                return true;
+
+            // An engine exists but the driver is not started (a previous Start() threw, or the
+            // driver asked for a reset). Discard it: NAudio refuses a second
+            // InitRecordAndPlayback on the same instance, and keeping the object around is
+            // exactly what used to wedge the ASIO path until the process was restarted.
+            if (_asioAudioEngine != null)
+            {
+                TearDownAsioEngineLocked();
+
+                if (!_asioManager.IsInitialized)
+                {
+                    // Start() discarded the driver; re-create it before trying again.
+                    string device = _config?.SelectedAsioDevice;
+                    if (string.IsNullOrEmpty(device) || !_asioManager.Initialize(device))
+                        return false;
+                }
+            }
+
+            var engine = new AsioAudioEngine(_asioManager.OutputChannelCount);
+            engine.UpdateChannelStates(_channels);
 
             // Connect ASIO audio input callback.
             // Defensive: if a previous handler is still attached for any reason, drop it first.
             DetachAsioAudioHandler();
             // Use the engine reference captured at this moment; the handler reads it via
             // a local copy so it stays valid even if _asioAudioEngine is replaced before
-            // the unsubscribe happens (we still unsubscribe in InitializeAsioDevice).
-            var engineSnapshot = _asioAudioEngine;
-            _asioAudioHandler = (sender, e) => engineSnapshot.ProcessAsioInput(e);
+            // the unsubscribe happens.
+            _asioAudioHandler = (sender, e) => engine.ProcessAsioInput(e);
             _asioManager.AudioAvailable += _asioAudioHandler;
 
-            _asioManager.Start(_asioAudioEngine);
+            if (!_asioManager.Start(engine))
+            {
+                // Leave no half-built state behind, so the next watchdog pass starts clean.
+                DetachAsioAudioHandler();
+                _asioAudioEngine = null;
+                return false;
+            }
+
+            _asioAudioEngine = engine;
+            WarnOnOutOfRangeAsioRouting();
+            return true;
+        }
+
+        /// <summary>
+        /// Detaches the input handler, releases the driver and drops the engine reference.
+        /// The driver is released rather than merely stopped because NAudio cannot restart a
+        /// stopped instance, so anything that stops ASIO must also make it re-creatable.
+        /// </summary>
+        private void TearDownAsioEngineLocked()
+        {
+            DetachAsioAudioHandler();
+            _asioManager.ReleaseDriver();
+            _asioAudioEngine = null;
+        }
+
+        /// <summary>
+        /// Flags channels routed outside the active driver's channel range. Such a channel is
+        /// silently skipped by the mixer, which looks exactly like "the routing is wrong".
+        /// </summary>
+        private void WarnOnOutOfRangeAsioRouting()
+        {
+            int inputs = _asioManager.InputChannelCount;
+            int outputs = _asioManager.OutputChannelCount;
+
+            foreach (var channel in _channels)
+            {
+                if (channel.Mode != ChannelMode.ASIO)
+                    continue;
+
+                if (channel.AsioOutputChannel < 0 || channel.AsioOutputChannel >= outputs)
+                {
+                    _logger.LogWarning(
+                        "Channel {Channel} is routed to ASIO output {Output} but device '{Device}' only has {Outputs} outputs; this channel will be silent.",
+                        channel.ChannelNumber, channel.AsioOutputChannel + 1, _asioManager.SelectedDevice, outputs);
+                }
+
+                if (channel.AsioInputChannel < 0 || channel.AsioInputChannel >= inputs)
+                {
+                    _logger.LogWarning(
+                        "Channel {Channel} listens on ASIO input {Input} but device '{Device}' only has {Inputs} inputs; this channel will receive nothing.",
+                        channel.ChannelNumber, channel.AsioInputChannel + 1, _asioManager.SelectedDevice, inputs);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Watchdog pass: brings ASIO up when it is configured but not playing. Covers a cold
+        /// boot where the driver is slower than the startup retry budget, an interface that is
+        /// plugged in later, a driver restart, and a control-panel reset request.
+        /// </summary>
+        private void AsioReconcileTick(object state)
+        {
+            if (Interlocked.CompareExchange(ref _asioReconcileInFlight, 1, 0) != 0)
+            {
+                return;
+            }
+
+            try
+            {
+                string device = _config?.SelectedAsioDevice;
+                if (string.IsNullOrEmpty(device))
+                {
+                    return;
+                }
+
+                lock (_asioLifecycleLock)
+                {
+                    // Steady state: driver initialized, engine built, transport running.
+                    if (_asioAudioEngine != null && _asioManager.IsPlaying)
+                    {
+                        return;
+                    }
+
+                    if (!_asioManager.IsInitialized || _asioManager.SelectedDevice != device)
+                    {
+                        TearDownAsioEngineLocked();
+                        if (!_asioManager.Initialize(device))
+                        {
+                            WarnAsioUnavailable(device);
+                            return;
+                        }
+                    }
+
+                    if (StartAsioEngineLocked())
+                    {
+                        _logger.LogInformation("ASIO watchdog recovered device '{Device}'", device);
+                        Volatile.Write(ref _asioWarnTicks, 0);
+                    }
+                    else
+                    {
+                        WarnAsioUnavailable(device);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ASIO reconcile pass failed");
+            }
+            finally
+            {
+                Volatile.Write(ref _asioReconcileInFlight, 0);
+            }
+        }
+
+        private void WarnAsioUnavailable(string device)
+        {
+            long now = Environment.TickCount64;
+            long last = Volatile.Read(ref _asioWarnTicks);
+            if (last != 0 && now - last < AsioWarnIntervalMs)
+            {
+                return;
+            }
+
+            Volatile.Write(ref _asioWarnTicks, now);
+            _logger.LogWarning(
+                "ASIO device '{Device}' is configured but not running: {Err}. Retrying every {Interval}s.",
+                device, _asioManager.LastError ?? "unknown", (int)AsioReconcileInterval.TotalSeconds);
         }
 
         public string GetAsioLastError()
@@ -371,6 +542,24 @@ namespace NDIIntercom.Core
         public int GetAsioOutputChannelCount()
         {
             return _asioManager.OutputChannelCount;
+        }
+
+        /// <summary>
+        /// Full ASIO state for diagnostics and for the settings UI.
+        /// </summary>
+        public AsioStatus GetAsioStatus()
+        {
+            return new AsioStatus
+            {
+                SelectedDevice = _asioManager.SelectedDevice ?? string.Empty,
+                IsInitialized = _asioManager.IsInitialized,
+                IsStarted = _asioManager.IsStarted,
+                IsPlaying = _asioManager.IsPlaying,
+                EngineBuilt = _asioAudioEngine != null,
+                InputChannelCount = _asioManager.InputChannelCount,
+                OutputChannelCount = _asioManager.OutputChannelCount,
+                LastError = _asioManager.LastError ?? string.Empty
+            };
         }
 #endif
 
@@ -434,44 +623,25 @@ namespace NDIIntercom.Core
             }
 
 #if WINDOWS
-            // Apply ASIO device configuration with retry. Useful at autostart-on-boot when
-            // the ASIO driver may not be ready until a few seconds after the audio interface
-            // enumerates. 3 attempts × exponential backoff (2s → 4s → 8s) is enough in
-            // practice without making config-apply feel sluggish on a healthy system.
+            // Single attempt only. Retrying with backoff here used to block the caller for up
+            // to 14s (freezing an interactive Apply on the SignalR hub thread) and still gave
+            // up permanently afterwards. AsioReconcileTick now owns recovery, so a driver that
+            // is slow to come up after boot is picked up a few seconds later instead.
             if (!string.IsNullOrEmpty(config.SelectedAsioDevice))
             {
-                if (!_asioManager.IsInitialized || _asioManager.SelectedDevice != config.SelectedAsioDevice)
+                lock (_asioLifecycleLock)
                 {
-                    bool asioInitialized = false;
-
-                    // The backoff exists for autostart-on-boot, where the ASIO driver can lag
-                    // behind the interface enumerating. An interactive Apply runs on a SignalR
-                    // hub thread, so blocking it for up to 14s there would freeze the settings
-                    // page; give the running case a single attempt.
-                    int maxRetries = IsRunning ? 1 : 3;
-                    int retryDelayMs = 2000;
-
-                    for (int attempt = 1; attempt <= maxRetries; attempt++)
+                    if (!_asioManager.IsInitialized || _asioManager.SelectedDevice != config.SelectedAsioDevice)
                     {
-                        asioInitialized = _asioManager.Initialize(config.SelectedAsioDevice);
+                        // The driver instance is about to be replaced; an engine built against
+                        // the previous one carries the wrong output channel stride.
+                        TearDownAsioEngineLocked();
 
-                        if (asioInitialized)
+                        if (!_asioManager.Initialize(config.SelectedAsioDevice))
                         {
-                            if (attempt > 1)
-                                _logger.LogInformation("ASIO device '{Device}' initialized after {Attempts} attempts", config.SelectedAsioDevice, attempt);
-                            break;
-                        }
-                        else if (attempt < maxRetries)
-                        {
-                            _logger.LogWarning("ASIO device '{Device}' init attempt {Attempt}/{Max} failed: {Err}. Retrying in {Delay} ms.",
-                                config.SelectedAsioDevice, attempt, maxRetries, _asioManager.LastError ?? "unknown", retryDelayMs);
-                            System.Threading.Thread.Sleep(retryDelayMs);
-                            retryDelayMs *= 2; // Exponential backoff: 2s, 4s, 8s
-                        }
-                        else
-                        {
-                            _logger.LogError("ASIO device '{Device}' init failed after {Max} attempts: {Err}",
-                                config.SelectedAsioDevice, maxRetries, _asioManager.LastError ?? "unknown");
+                            _logger.LogWarning(
+                                "ASIO device '{Device}' not available yet: {Err}. The watchdog will keep retrying.",
+                                config.SelectedAsioDevice, _asioManager.LastError ?? "unknown");
                         }
                     }
                 }
@@ -559,6 +729,12 @@ namespace NDIIntercom.Core
 #if WINDOWS
             // Initialize and start ASIO if a device is already selected
             StartAsioEngine();
+
+            // Push the new routing into the running engine so ring buffers belonging to
+            // channels that are no longer ASIO+TALK are dropped instead of lingering with
+            // stale audio in them. ChannelState objects are shared by reference, so the
+            // routing values themselves are already live; this is the cleanup pass.
+            _asioAudioEngine?.UpdateChannelStates(_channels);
 #endif
 
             if (shouldPersistConfig)
@@ -585,6 +761,9 @@ namespace NDIIntercom.Core
 
 #if WINDOWS
             StartAsioEngine();
+
+            _asioReconcileTimer ??= new System.Threading.Timer(
+                AsioReconcileTick, null, AsioReconcileInterval, AsioReconcileInterval);
 #endif
 
             // Start DEDICATED AUDIO THREAD with PRECISE TIMING (like NDI_Test_Simple)
@@ -594,6 +773,12 @@ namespace NDIIntercom.Core
 
         public void Stop()
         {
+#if WINDOWS
+            // Stop the ASIO watchdog first and wait for an in-flight pass: it can create and
+            // start a driver, which must not happen while we are tearing the engine down.
+            StopAsioWatchdog();
+#endif
+
             // Signal cancellation
             _processingCancellation?.Cancel();
 
@@ -625,12 +810,42 @@ namespace NDIIntercom.Core
             _audioEngine.StopPlayback();
 
 #if WINDOWS
-            if (_asioManager.IsInitialized)
+            lock (_asioLifecycleLock)
             {
-                _asioManager.Stop();
+                TearDownAsioEngineLocked();
             }
 #endif
         }
+
+#if WINDOWS
+        /// <summary>
+        /// Stops the watchdog timer and waits for a running pass to finish, so no ASIO
+        /// lifecycle work is in flight when the caller tears things down.
+        /// </summary>
+        private void StopAsioWatchdog()
+        {
+            var timer = _asioReconcileTimer;
+            _asioReconcileTimer = null;
+            if (timer == null)
+            {
+                return;
+            }
+
+            using (var stopped = new ManualResetEvent(false))
+            {
+                if (timer.Dispose(stopped))
+                {
+                    stopped.WaitOne(TimeSpan.FromSeconds(2));
+                }
+            }
+
+            long spinUntil = Environment.TickCount64 + 2000;
+            while (Volatile.Read(ref _asioReconcileInFlight) != 0 && Environment.TickCount64 < spinUntil)
+            {
+                Thread.Sleep(10);
+            }
+        }
+#endif
 
         /// <summary>
         /// Dedicated audio thread with PRECISE TIMING (based on NDI_Test_Simple pattern)

@@ -1,4 +1,4 @@
-namespace NDIIntercom.Models
+﻿namespace NDIIntercom.Models
 {
     /// <summary>
     /// Product identity (16ch full vs 2ch light). Set <see cref="IntercomRuntime.Product"/> at process entry before config/engine use.
@@ -21,7 +21,7 @@ namespace NDIIntercom.Models
         public required string NdiModelName { get; init; }
 
         /// <summary>NDI <c>ndi_product</c> version string.</summary>
-        public string NdiProductVersion { get; init; } = "1.7.9";
+        public string NdiProductVersion { get; init; } = "1.8.0";
     }
 
     public static class IntercomProducts
@@ -36,7 +36,7 @@ namespace NDIIntercom.Models
             NdiProductLongName = "NDI Intercom16 - Professional Audio Intercom System",
             NdiProductShortName = "NDI Intercom16",
             NdiModelName = "Intercom-16CH",
-            NdiProductVersion = "1.7.9"
+            NdiProductVersion = "1.8.0"
         };
 
         public static IntercomProductOptions Light { get; } = new IntercomProductOptions
@@ -49,7 +49,7 @@ namespace NDIIntercom.Models
             NdiProductLongName = "NDI Intercom2 - Professional Audio Intercom System",
             NdiProductShortName = "NDI Intercom2",
             NdiModelName = "Intercom-2CH",
-            NdiProductVersion = "1.7.9"
+            NdiProductVersion = "1.8.0"
         };
     }
 
