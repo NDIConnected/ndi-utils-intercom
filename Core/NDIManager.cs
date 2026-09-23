@@ -1132,6 +1132,13 @@ namespace NDIIntercom.Core
         {
             lock (_ndiLifetimeLock)
             {
+                // Same friendly name and a live sender: leave the endpoint alone. Recreating
+                // it on every Apply drops every peer that is listening to this channel.
+                if (string.Equals(SendName, name, StringComparison.Ordinal) && _senderInstance != IntPtr.Zero)
+                {
+                    return;
+                }
+
                 string previousReceiverName = BuildReceiverName();
 
                 SendName = name;

@@ -4,6 +4,14 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- Settings no longer change on their own. Talk, Listen, level knobs and Stream Deck no longer rewrite `config.json` before the saved configuration is loaded, and they can no longer race an Apply and put the previous devices or NDI routing back.
+- Settings keeps the saved microphone, speaker, ASIO device and NDI receiver selected when that device or source is not in the current list, instead of showing the first device or "None" and storing that on the next Apply.
+- Renaming a channel card no longer renames the NDI sender.
+- Apply keeps the existing NDI device id, so it no longer recreates every sender and receiver.
+
 ## [1.8.0] — 2026-09
 
 ### Fixed

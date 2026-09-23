@@ -173,7 +173,7 @@ namespace NDIIntercom.Hubs
 
         public Task<AppConfig> GetConfiguration()
         {
-            return Task.FromResult(ConfigManager.LoadConfig());
+            return Task.FromResult(_intercomEngine.GetConfigurationSnapshot());
         }
 
         public Task<IntercomProductInfoMessage> GetProductInfo()
@@ -217,7 +217,6 @@ namespace NDIIntercom.Hubs
         public async Task ApplyConfiguration(AppConfig config)
         {
             config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
-            ConfigManager.SaveConfig(config);
             _intercomEngine.ApplyConfig(config);
             await Clients.All.SendAsync("ConfigurationApplied");
         }
@@ -227,7 +226,7 @@ namespace NDIIntercom.Hubs
         {
             try
             {
-                var config = ConfigManager.LoadConfig();
+                var config = _intercomEngine.GetConfigurationSnapshot();
                 ConfigManager.ExportConfig(config, filePath);
                 await Clients.Caller.SendAsync("ConfigurationExported", filePath);
             }
@@ -243,7 +242,6 @@ namespace NDIIntercom.Hubs
             {
                 var config = ConfigManager.ImportConfig(filePath);
                 config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
-                ConfigManager.SaveConfig(config);
                 _intercomEngine.ApplyConfig(config);
                 await Clients.All.SendAsync("ConfigurationImported");
             }
@@ -258,7 +256,7 @@ namespace NDIIntercom.Hubs
         {
             try
             {
-                var config = ConfigManager.LoadConfig();
+                var config = _intercomEngine.GetConfigurationSnapshot();
                 PresetManager.SavePreset(presetName, config);
                 await Clients.All.SendAsync("PresetSaved", presetName);
             }
@@ -273,7 +271,6 @@ namespace NDIIntercom.Hubs
             try
             {
                 var config = PresetManager.LoadPreset(presetName);
-                ConfigManager.SaveConfig(config);
                 _intercomEngine.ApplyConfig(config);
                 await Clients.All.SendAsync("PresetLoaded", presetName);
             }
