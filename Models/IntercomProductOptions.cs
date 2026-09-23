@@ -21,7 +21,7 @@
         public required string NdiModelName { get; init; }
 
         /// <summary>NDI <c>ndi_product</c> version string.</summary>
-        public string NdiProductVersion { get; init; } = "1.8.0";
+        public string NdiProductVersion { get; init; } = "1.8.1";
     }
 
     public static class IntercomProducts
@@ -36,7 +36,7 @@
             NdiProductLongName = "NDI Intercom16 - Professional Audio Intercom System",
             NdiProductShortName = "NDI Intercom16",
             NdiModelName = "Intercom-16CH",
-            NdiProductVersion = "1.8.0"
+            NdiProductVersion = "1.8.1"
         };
 
         public static IntercomProductOptions Light { get; } = new IntercomProductOptions
@@ -49,7 +49,7 @@
             NdiProductLongName = "NDI Intercom2 - Professional Audio Intercom System",
             NdiProductShortName = "NDI Intercom2",
             NdiModelName = "Intercom-2CH",
-            NdiProductVersion = "1.8.0"
+            NdiProductVersion = "1.8.1"
         };
     }
 

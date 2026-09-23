@@ -21,6 +21,7 @@ namespace NDIIntercom.Models
         public bool ListenEnabled { get; set; }
         /// <summary>Receive gain percent: 0 = mute, 100 = unity, up to 300 = 3× boost.</summary>
         public int InputLevel { get; set; } = 100;
+        /// <summary>Talk/send gain percent: 0 = mute, 100 = unity, up to 300 = 3× boost.</summary>
         public int OutputLevel { get; set; } = 100;
 
         // Mode: NDI or ASIO

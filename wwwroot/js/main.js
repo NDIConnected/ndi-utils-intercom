@@ -170,7 +170,7 @@ function renderChannels() {
                          data-channel="${channel.channelNumber}"
                          data-type="output"
                          data-value="${channel.outputLevel}"
-                         style="transform: rotate(${(channel.outputLevel - 100) * 2.7}deg)">
+                         style="transform: rotate(${knobRotationDegrees(channel.outputLevel, 'output')}deg)">
                     </div>
                     <div class="level-value output">${channel.outputLevel}</div>
                 </div>
@@ -317,12 +317,11 @@ function updateChannelUI(channel) {
 }
 
 /**
- * Knob rotation: Input 0=mute (left), 100=unity (center), 300=3× (right).
- * Output keeps legacy 0–100 mapping (unity at max / center).
+ * Knob rotation for Input and Output: 0=mute (left), 100=unity (center), 300=3× (right).
  */
 function knobRotationDegrees(value, type) {
     const v = Number(value) || 0;
-    if (type === 'input') {
+    if (type === 'input' || type === 'output') {
         if (v <= 100) {
             return ((v - 100) / 100) * 135;
         }
@@ -343,7 +342,7 @@ function initializeKnobs() {
 
         const updateLevel = async (clientY) => {
             const type = knob.dataset.type;
-            const max = type === 'input' ? 300 : 100;
+            const max = (type === 'input' || type === 'output') ? 300 : 100;
             const deltaY = startY - clientY;
             let newValue = startValue + Math.round(deltaY / 2);
             newValue = Math.max(0, Math.min(max, newValue));

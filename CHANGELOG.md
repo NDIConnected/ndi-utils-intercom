@@ -12,6 +12,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Renaming a channel card no longer renames the NDI sender.
 - Apply keeps the existing NDI device id, so it no longer recreates every sender and receiver.
 
+## [1.8.1] — 2026-09
+
+### Changed
+- **Output Level** knob: same range as Input — center = unity (100%), left = mute (0%), right = boost up to 300% (3×). Hard clip after gain already applied on the send path.
+
 ## [1.8.0] — 2026-09
 
 ### Fixed

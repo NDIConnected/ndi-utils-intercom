@@ -67,7 +67,8 @@ namespace NDIIntercom.Hubs
             var channel = channels.FirstOrDefault(c => c.ChannelNumber == channelNumber);
             if (channel != null)
             {
-                channel.OutputLevel = level;
+                // 0 = mute, 100 = unity, 300 = 3× boost (same range as Input Level)
+                channel.OutputLevel = Math.Clamp(level, 0, 300);
 
                 // Save configuration to persist the change
                 _intercomEngine.SaveCurrentConfiguration();

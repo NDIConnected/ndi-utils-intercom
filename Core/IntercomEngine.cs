@@ -718,7 +718,7 @@ namespace NDIIntercom.Core
 
                     channelState.Label = channelConfig.Label;
                     channelState.InputLevel = Math.Clamp(channelConfig.InputLevel, 0, 300);
-                    channelState.OutputLevel = Math.Clamp(channelConfig.OutputLevel, 0, 100);
+                    channelState.OutputLevel = Math.Clamp(channelConfig.OutputLevel, 0, 300);
                     channelState.Mode = (ChannelMode)channelConfig.Mode;
 #if !WINDOWS
                     if (channelState.Mode == ChannelMode.ASIO)
