@@ -4,7 +4,7 @@ All notable changes to NDI Intercom16 and NDI Intercom2 are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.8.2] — 2026-09
 
 ### Fixed
 - Settings no longer change on their own. Talk, Listen, level knobs and Stream Deck no longer rewrite `config.json` before the saved configuration is loaded, and they can no longer race an Apply and put the previous devices or NDI routing back.
