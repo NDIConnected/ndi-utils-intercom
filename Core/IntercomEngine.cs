@@ -45,6 +45,11 @@ namespace NDIIntercom.Core
 #endif
         private List<ChannelState> _channels;
         private AppConfig _config;
+
+        // Talk/Listen/knob saves and Settings Apply both rewrite config.json. They must not
+        // interleave, and a save before the first Apply must not invent a blank config.
+        private readonly object _configLock = new object();
+        private bool _configReady;
         private CancellationTokenSource _processingCancellation;
         private Task _processingTask;
 
@@ -318,21 +323,26 @@ namespace NDIIntercom.Core
                     return false;
                 }
 
-                if (_config != null)
-                {
-                    _config.SelectedAsioDevice = deviceName;
-                    _config.AsioInputChannelCount = _asioManager.InputChannelCount;
-                    _config.AsioOutputChannelCount = _asioManager.OutputChannelCount;
-                    SaveCurrentConfiguration();
-                }
-
                 if (IsRunning)
                 {
                     StartAsioEngineLocked();
                 }
-
-                return true;
             }
+
+            // Persist after releasing the ASIO lock. SaveCurrentConfiguration takes
+            // _configLock; holding the ASIO lock across that wait deadlocks with ApplyConfig.
+            lock (_configLock)
+            {
+                if (_configReady && _config != null)
+                {
+                    _config.SelectedAsioDevice = deviceName;
+                    _config.AsioInputChannelCount = _asioManager.InputChannelCount;
+                    _config.AsioOutputChannelCount = _asioManager.OutputChannelCount;
+                    SaveCurrentConfigurationLocked();
+                }
+            }
+
+            return true;
         }
 
         // Captured handler reference so we can unsubscribe symmetrically when switching
@@ -573,8 +583,6 @@ namespace NDIIntercom.Core
             }
         }
 
-        private bool _sendersCreated = false;
-
         // The legacy `isWindowsService` parameter is kept for binary compatibility (callers
         // outside this assembly may pass it) but is now ignored — ASIO retry runs the same
         // way in tray-app and (former) service modes. Bound to 3 attempts with exponential
@@ -584,10 +592,57 @@ namespace NDIIntercom.Core
         {
             _ = isWindowsService; // intentionally unused (see comment above)
 
-            _config = config ?? new AppConfig();
+            lock (_configLock)
+            {
+                ApplyConfigLocked(config);
+            }
+        }
+
+        /// <summary>
+        /// Live configuration for the settings page. Reads memory after the first apply so
+        /// the UI cannot display a disk file that a concurrent Talk/knob save rewrote.
+        /// </summary>
+        public AppConfig GetConfigurationSnapshot()
+        {
+            lock (_configLock)
+            {
+                if (_configReady && _config != null)
+                {
+                    return ConfigManager.Clone(_config);
+                }
+            }
+
+            return ConfigManager.LoadConfig();
+        }
+
+        private void ApplyConfigLocked(AppConfig config)
+        {
+            var incoming = config ?? new AppConfig();
+
+            // The settings page does not edit these. A payload that omits them used to
+            // mint a new device id (recreating every NDI endpoint) and zero the ASIO counts.
+            if (_config != null)
+            {
+                if (string.IsNullOrWhiteSpace(incoming.DeviceId) && !string.IsNullOrWhiteSpace(_config.DeviceId))
+                {
+                    incoming.DeviceId = _config.DeviceId;
+                }
+
+                if (incoming.AsioInputChannelCount <= 0 && _config.AsioInputChannelCount > 0)
+                {
+                    incoming.AsioInputChannelCount = _config.AsioInputChannelCount;
+                }
+
+                if (incoming.AsioOutputChannelCount <= 0 && _config.AsioOutputChannelCount > 0)
+                {
+                    incoming.AsioOutputChannelCount = _config.AsioOutputChannelCount;
+                }
+            }
+
+            _config = incoming;
             _config.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
 
-            bool shouldPersistConfig = NormalizeIdentity(_config);
+            NormalizeIdentity(_config);
 
             _ndiManager.SetIdentity(_config.ApplicationId, _config.DeviceId);
             _ndiManager.SetSuffixMode(NDIManager.SuffixModeCompact);
@@ -663,7 +718,7 @@ namespace NDIIntercom.Core
 
                     channelState.Label = channelConfig.Label;
                     channelState.InputLevel = Math.Clamp(channelConfig.InputLevel, 0, 300);
-                    channelState.OutputLevel = Math.Clamp(channelConfig.OutputLevel, 0, 100);
+                    channelState.OutputLevel = Math.Clamp(channelConfig.OutputLevel, 0, 300);
                     channelState.Mode = (ChannelMode)channelConfig.Mode;
 #if !WINDOWS
                     if (channelState.Mode == ChannelMode.ASIO)
@@ -689,11 +744,9 @@ namespace NDIIntercom.Core
                         channelState.ListenEnabled = channelConfig.ListenEnabled.Value;
                     }
 
-                    // Only create senders once at startup
-                    if (!_sendersCreated)
-                    {
-                        _ndiManager.SetChannelSendName(channelState.ChannelNumber, channelState.NdiSendName);
-                    }
+                    // No-op when the friendly name and the sender already match, so Apply does
+                    // not tear down a live sender. A real rename still republishes it.
+                    _ndiManager.SetChannelSendName(channelState.ChannelNumber, channelState.NdiSendName);
 
                     // Always update receiver sources (in case they change)
                     // This can be done while running - NDI handles it
@@ -704,8 +757,6 @@ namespace NDIIntercom.Core
             {
                 _ndiManager.EndConfigApply();
             }
-
-            _sendersCreated = true;
 
             // Apply noise gate settings to AudioEngine (input microphone - blocks background noise)
             _audioEngine.ConfigureNoiseGate(
@@ -737,10 +788,8 @@ namespace NDIIntercom.Core
             _asioAudioEngine?.UpdateChannelStates(_channels);
 #endif
 
-            if (shouldPersistConfig)
-            {
-                ConfigManager.SaveConfig(_config);
-            }
+            _configReady = true;
+            ConfigManager.SaveConfig(_config);
         }
 
         private static string SanitizeApplicationId(string applicationId)
@@ -1123,20 +1172,30 @@ namespace NDIIntercom.Core
             var channel = _channels.FirstOrDefault(c => c.ChannelNumber == channelNumber);
             if (channel != null)
             {
+                // The card title is not the NDI sender name. Writing the label into
+                // NdiSendName republished the sender and made every peer's receiver miss.
                 channel.Label = label;
-                channel.NdiSendName = label;
-                _ndiManager.SetChannelSendName(channelNumber, label);
 
-                // Save configuration to persist the change
                 SaveCurrentConfiguration();
             }
         }
 
         public void SaveCurrentConfiguration()
         {
-            if (_config == null)
+            lock (_configLock)
             {
-                _config = new AppConfig();
+                SaveCurrentConfigurationLocked();
+            }
+        }
+
+        private void SaveCurrentConfigurationLocked()
+        {
+            // Before the first ApplyConfig, _config is still null and the channel list is
+            // the startup placeholder. Saving that overwrote config.json with empty devices
+            // and empty NDI routing as soon as a Talk button or a knob moved.
+            if (!_configReady || _config == null)
+            {
+                return;
             }
 
             // Update channel configs from current state

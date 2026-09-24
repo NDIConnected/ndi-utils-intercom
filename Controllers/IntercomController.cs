@@ -183,7 +183,7 @@ namespace NDIIntercom.Controllers
         {
             try
             {
-                var config = ConfigManager.LoadConfig();
+                var config = _intercomEngine.GetConfigurationSnapshot();
                 ConfigManager.ExportConfig(config, request.FilePath);
                 return Ok(new { message = "Configuration exported", filePath = request.FilePath });
             }
@@ -200,7 +200,6 @@ namespace NDIIntercom.Controllers
             try
             {
                 var config = ConfigManager.ImportConfig(request.FilePath);
-                ConfigManager.SaveConfig(config);
                 _intercomEngine.ApplyConfig(config);
                 await _hubContext.Clients.All.SendAsync("ConfigurationImported");
                 return Ok(new { message = "Configuration imported" });
@@ -217,7 +216,7 @@ namespace NDIIntercom.Controllers
         {
             try
             {
-                var config = ConfigManager.LoadConfig();
+                var config = _intercomEngine.GetConfigurationSnapshot();
                 PresetManager.SavePreset(request.PresetName, config);
                 return Ok(new { message = "Preset saved", presetName = request.PresetName });
             }
@@ -241,7 +240,6 @@ namespace NDIIntercom.Controllers
             try
             {
                 var config = PresetManager.LoadPreset(presetName);
-                ConfigManager.SaveConfig(config);
                 _intercomEngine.ApplyConfig(config);
                 await _hubContext.Clients.All.SendAsync("PresetLoaded", presetName);
                 return Ok(new { message = "Preset loaded", presetName });

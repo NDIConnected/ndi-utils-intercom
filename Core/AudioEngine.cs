@@ -55,7 +55,19 @@ namespace NDIIntercom.Core
 
         public List<AudioDeviceInfo> GetInputDevices()
         {
-            var devices = new List<AudioDeviceInfo>();
+            var devices = new List<AudioDeviceInfo>
+            {
+                // Empty id is the persisted "default" selection. Without this entry the
+                // settings page has nothing to select and the browser shows the first
+                // endpoint, which Apply then writes back as if the operator chose it.
+                new AudioDeviceInfo
+                {
+                    DeviceId = "",
+                    FriendlyName = "Default (Windows communications device)",
+                    IsInput = true,
+                    IsOutput = false
+                }
+            };
             var enumerator = new MMDeviceEnumerator();
 
             foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
@@ -74,7 +86,16 @@ namespace NDIIntercom.Core
 
         public List<AudioDeviceInfo> GetOutputDevices()
         {
-            var devices = new List<AudioDeviceInfo>();
+            var devices = new List<AudioDeviceInfo>
+            {
+                new AudioDeviceInfo
+                {
+                    DeviceId = "",
+                    FriendlyName = "Default (Windows communications device)",
+                    IsInput = false,
+                    IsOutput = true
+                }
+            };
             var enumerator = new MMDeviceEnumerator();
 
             foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))

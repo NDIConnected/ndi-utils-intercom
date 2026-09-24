@@ -100,6 +100,25 @@ namespace NDIIntercom.Core
             return empty;
         }
 
+        /// <summary>
+        /// Deep copy so callers can hand the live configuration to the UI without racing
+        /// a concurrent save that clears and rebuilds <see cref="AppConfig.Channels"/>.
+        /// </summary>
+        public static AppConfig Clone(AppConfig config)
+        {
+            if (config == null)
+            {
+                var empty = new AppConfig();
+                empty.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
+                return empty;
+            }
+
+            string json = JsonSerializer.Serialize(config, JsonOptions);
+            var copy = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions) ?? new AppConfig();
+            copy.EnsureChannelCount(IntercomRuntime.Product.MaxChannels);
+            return copy;
+        }
+
         public static void SaveConfig(AppConfig config)
         {
             // Atomic + thread-safe save:

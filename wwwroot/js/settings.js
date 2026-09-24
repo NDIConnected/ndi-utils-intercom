@@ -161,40 +161,56 @@ function getValidatedApplicationId() {
 
 // Populate audio devices
 function populateAudioDevices() {
-    const micSelect = document.getElementById("microphoneSelect");
-    const speakerSelect = document.getElementById("speakerSelect");
+    populateDeviceSelect(
+        document.getElementById("microphoneSelect"),
+        inputDevices,
+        config.selectedMicrophone,
+        "Saved microphone (not currently available)"
+    );
+    populateDeviceSelect(
+        document.getElementById("speakerSelect"),
+        outputDevices,
+        config.selectedSpeaker,
+        "Saved speaker (not currently available)"
+    );
+}
 
-    // Do not prepend a second empty-value option (breaks Pulse default vs API "Default input").
-    micSelect.innerHTML = "";
-    if (inputDevices.length === 0) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "Default";
-        micSelect.appendChild(opt);
-    } else {
-        inputDevices.forEach(device => {
-            const option = document.createElement("option");
-            option.value = device.deviceId || "";
-            option.textContent = device.friendlyName || "Default";
-            option.selected = (device.deviceId || "") === (config.selectedMicrophone || "");
-            micSelect.appendChild(option);
-        });
+// Keeps the saved id selected even when that endpoint is unplugged or not yet
+// enumerated. Otherwise the browser shows the first device and Apply stores it.
+function populateDeviceSelect(select, devices, selectedId, unavailableLabel) {
+    if (!select) {
+        return;
     }
 
-    speakerSelect.innerHTML = "";
-    if (outputDevices.length === 0) {
+    const saved = selectedId || "";
+    select.innerHTML = "";
+
+    let matched = false;
+    (devices || []).forEach(device => {
+        const option = document.createElement("option");
+        const id = device.deviceId || "";
+        option.value = id;
+        option.textContent = device.friendlyName || "Default";
+        if (id === saved) {
+            option.selected = true;
+            matched = true;
+        }
+        select.appendChild(option);
+    });
+
+    if (!matched && saved) {
+        const option = document.createElement("option");
+        option.value = saved;
+        option.textContent = unavailableLabel;
+        option.selected = true;
+        select.appendChild(option);
+    }
+
+    if (select.options.length === 0) {
         const opt = document.createElement("option");
         opt.value = "";
         opt.textContent = "Default";
-        speakerSelect.appendChild(opt);
-    } else {
-        outputDevices.forEach(device => {
-            const option = document.createElement("option");
-            option.value = device.deviceId || "";
-            option.textContent = device.friendlyName || "Default";
-            option.selected = (device.deviceId || "") === (config.selectedSpeaker || "");
-            speakerSelect.appendChild(option);
-        });
+        select.appendChild(opt);
     }
 }
 
@@ -207,13 +223,25 @@ function populateAsioDevices() {
     const asioSelect = document.getElementById("asioDeviceSelect");
 
     asioSelect.innerHTML = '<option value="">-- Select ASIO Device --</option>';
+    let asioMatched = !config.selectedAsioDevice;
     asioDevices.forEach(device => {
         const option = document.createElement("option");
         option.value = device;
         option.textContent = device;
         option.selected = device === config.selectedAsioDevice;
+        if (option.selected) {
+            asioMatched = true;
+        }
         asioSelect.appendChild(option);
     });
+
+    if (config.selectedAsioDevice && !asioMatched) {
+        const option = document.createElement("option");
+        option.value = config.selectedAsioDevice;
+        option.textContent = config.selectedAsioDevice + " (not available)";
+        option.selected = true;
+        asioSelect.appendChild(option);
+    }
 
     // Show channel info if device is already selected
     if (config.selectedAsioDevice && config.asioInputChannelCount > 0) {
@@ -306,6 +334,12 @@ async function scanAsioChannels() {
                 inputChannels: channelCounts.inputChannels || 0,
                 outputChannels: channelCounts.outputChannels || 0
             };
+
+            if (config) {
+                config.selectedAsioDevice = selectedDevice;
+                config.asioInputChannelCount = asioChannelCounts.inputChannels;
+                config.asioOutputChannelCount = asioChannelCounts.outputChannels;
+            }
 
             if (rangesChanged) {
                 populateNDIChannels();
@@ -412,6 +446,11 @@ function populateNDIChannels() {
             };
 
         const channelMode = channelConfig.mode || 0; // 0 = NDI, 1 = ASIO
+        const savedReceive = channelConfig.ndiReceiveName || "";
+        const receiveListed = ndiSources.some(source => source === savedReceive);
+        const missingReceiveOption = savedReceive && !receiveListed
+            ? `<option value="${escapeHtml(savedReceive)}" selected>${escapeHtml(savedReceive)} (not currently visible)</option>`
+            : "";
 
         const channelDiv = document.createElement("div");
         channelDiv.className = "ndi-channel";
@@ -459,6 +498,7 @@ function populateNDIChannels() {
                 <label>NDI Receive:</label>
                 <select id="ndiReceive${i}">
                     <option value="">None</option>
+                    ${missingReceiveOption}
                     ${ndiSources.map(source => `
                         <option value="${escapeHtml(source)}" ${source === channelConfig.ndiReceiveName ? "selected" : ""}>
                             ${escapeHtml(source)}
@@ -513,9 +553,12 @@ async function applySettings() {
         const asioSelectEl = document.getElementById("asioDeviceSelect");
         const newConfig = {
             applicationId: applicationId,
+            deviceId: config.deviceId || "",
             selectedMicrophone: document.getElementById("microphoneSelect").value,
             selectedSpeaker: document.getElementById("speakerSelect").value,
-            selectedAsioDevice: productInfo.asioAvailable && asioSelectEl ? asioSelectEl.value : "",
+            selectedAsioDevice: productInfo.asioAvailable && asioSelectEl ? asioSelectEl.value : (config.selectedAsioDevice || ""),
+            asioInputChannelCount: config.asioInputChannelCount || 0,
+            asioOutputChannelCount: config.asioOutputChannelCount || 0,
 
             // Microphone Noise Gate
             noiseGateEnabled: document.getElementById("enableNoiseGate").checked,
